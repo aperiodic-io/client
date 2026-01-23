@@ -10,34 +10,46 @@ from __future__ import annotations
 import asyncio
 from datetime import date, datetime
 from io import BytesIO
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypeVar
 
 import httpx
 import polars as pl
 from tqdm.auto import tqdm
 
+from .config import DEFAULT_BASE_URL, MAX_CONCURRENT_DOWNLOADS
 from .types import AggregateDataResponse, ArrivalTime, Exchange, Period
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Coroutine, Sequence
 
-# Default API base URL
-DEFAULT_BASE_URL = "https://unravel.finance/api/v1"
+T = TypeVar("T")
 
-# Maximum concurrent downloads
-MAX_CONCURRENT_DOWNLOADS = 10
+
+def _run_async(coro: Coroutine[None, None, T]) -> T:
+    """Run an async coroutine, handling both regular Python and Jupyter environments."""
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        # No running loop, use asyncio.run()
+        return asyncio.run(coro)
+
+    # Running in an existing event loop (e.g., Jupyter)
+    import nest_asyncio
+
+    nest_asyncio.apply()
+    return loop.run_until_complete(coro)
 
 
 class UnravelDataError(Exception):
     """Base exception for Unravel Data Client errors."""
 
-    pass
-
 
 class APIError(UnravelDataError):
     """Exception raised when the API returns an error."""
 
-    def __init__(self, message: str, status_code: int, details: list[str] | None = None):
+    def __init__(
+        self, message: str, status_code: int, details: list[str] | None = None
+    ):
         self.message = message
         self.status_code = status_code
         self.details = details or []
@@ -51,7 +63,9 @@ class DownloadError(UnravelDataError):
         self.year = year
         self.month = month
         self.original_error = original_error
-        super().__init__(f"Failed to download data for {year}-{month:02d}: {original_error}")
+        super().__init__(
+            f"Failed to download data for {year}-{month:02d}: {original_error}"
+        )
 
 
 async def _fetch_presigned_urls(
@@ -272,7 +286,7 @@ def get_ohlcv_historical(
         ... )
         >>> print(df.head())
     """
-    return asyncio.run(
+    return _run_async(
         _get_ohlcv_historical_async(
             api_key=api_key,
             arrival_time=arrival_time,
@@ -390,4 +404,4 @@ def get_ohlcv_historical_multi(
         results = await asyncio.gather(*tasks)
         return dict(results)
 
-    return asyncio.run(fetch_all())
+    return _run_async(fetch_all())
