@@ -27,3 +27,11 @@ class APIError(TypedDict, total=False):
 
     error: str
     details: list[str]
+
+
+class SymbolsResponse(TypedDict):
+    """Response from the symbols listing API."""
+
+    symbols: list[str]
+    exchange: str
+    bucket: str

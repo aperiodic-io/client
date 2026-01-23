@@ -28,6 +28,8 @@ from .client import (
     get_ohlcv_historical,
     get_ohlcv_historical_async,
     get_ohlcv_historical_multi,
+    get_symbols,
+    get_symbols_async,
 )
 from .types import ArrivalTime, Exchange, Period
 
@@ -36,6 +38,8 @@ __all__ = [
     "get_ohlcv_historical",
     "get_ohlcv_historical_async",
     "get_ohlcv_historical_multi",
+    "get_symbols",
+    "get_symbols_async",
     # Exceptions
     "APIError",
     "DownloadError",

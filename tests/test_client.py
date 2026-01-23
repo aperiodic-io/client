@@ -9,6 +9,7 @@ from unravel_data_client import (
     APIError,
     DownloadError,
     get_ohlcv_historical,
+    get_symbols,
 )
 
 
@@ -54,6 +55,36 @@ class TestGetOhlcvHistorical:
         assert exc_info.value.status_code in [400, 401]
 
 
+class TestGetSymbols:
+    """Tests for get_symbols function."""
+
+    def test_invalid_api_key_raises_error(self):
+        """Test that an invalid API key raises APIError."""
+        with pytest.raises(APIError) as exc_info:
+            get_symbols(
+                api_key="invalid-key",
+                exchange="binance-futures",
+            )
+
+        assert exc_info.value.status_code == 401
+
+    def test_returns_list(self):
+        """Test that the function returns a list of symbols."""
+        # This test requires a valid API key - skip if not available
+        pytest.skip("Requires valid API key")
+
+    def test_invalid_exchange_raises_error(self):
+        """Test that an invalid exchange raises APIError."""
+        with pytest.raises(APIError) as exc_info:
+            get_symbols(
+                api_key="test-key",
+                exchange="invalid-exchange",  # type: ignore
+            )
+
+        # Should get 400 for invalid exchange or 401 for invalid key
+        assert exc_info.value.status_code in [400, 401]
+
+
 class TestTypes:
     """Tests for type definitions."""
 
@@ -78,3 +109,10 @@ class TestTypes:
 
         valid_values: list[Exchange] = ["binance-futures", "binance"]
         assert len(valid_values) == 2
+
+    def test_symbols_response_type(self):
+        """Test SymbolsResponse type exists."""
+        from unravel_data_client.types import SymbolsResponse
+
+        # Just checking the type can be imported
+        assert SymbolsResponse is not None
