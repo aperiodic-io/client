@@ -39,10 +39,12 @@ print(df.head())
 ## Features
 
 - **Parallel Downloads**: Files are downloaded concurrently for fast data retrieval
+- **Per-File Retry**: Each file download has independent retry with exponential backoff
 - **Date Range Support**: Fetch data spanning multiple months in a single call
 - **Progress Bar**: Visual progress indication with tqdm
 - **Type Hints**: Full type annotations for IDE support
 - **Async Support**: Both sync and async APIs available
+- **Jupyter Compatible**: Works seamlessly in Jupyter notebooks
 
 ## API Reference
 
@@ -114,6 +116,35 @@ async def main():
 df = asyncio.run(main())
 ```
 
+### `get_symbols`
+
+Get the list of available symbols for an exchange.
+
+```python
+from unravel_data_client import get_symbols
+
+symbols = get_symbols(
+    api_key="your-api-key",
+    exchange="binance-futures",
+)
+
+print(f"Found {len(symbols)} symbols")
+print(symbols[:10])  # First 10 symbols
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `api_key` | `str` | Your Unravel API key |
+| `exchange` | `str` | Source exchange (`"binance-futures"`, `"binance"`) |
+| `bucket` | `str` | Data bucket (default: `"ohlcv"`) |
+| `base_url` | `str` | API base URL (optional) |
+
+**Returns:**
+
+`list[str]` - List of available symbol names (lowercase)
+
 ### `get_ohlcv_historical_multi`
 
 Fetch data for multiple symbols concurrently.
@@ -160,12 +191,39 @@ Data is stored using Hive partitioning in Parquet format:
 
 The client handles all the complexity of fetching multiple monthly files and combining them into a single DataFrame.
 
+## Package Structure
+
+The client is organized into modules for different data types:
+
+```
+unravel_data_client/
+├── ohlcv/              # OHLCV candlestick data
+│   └── historical.py   # Historical data retrieval
+├── general/            # General utilities
+│   └── symbols.py      # Symbol listing
+├── client.py           # Shared utilities and base functionality
+├── config.py           # Configuration constants
+└── types.py            # Type definitions
+```
+
+You can import directly from the package or from submodules:
+
+```python
+# Direct import (recommended)
+from unravel_data_client import get_ohlcv_historical, get_symbols
+
+# Or import from submodules
+from unravel_data_client.ohlcv import get_ohlcv_historical
+from unravel_data_client.general import get_symbols
+```
+
 ## Requirements
 
 - Python 3.11+
 - httpx
 - polars
 - tqdm
+- nest_asyncio (for Jupyter support)
 
 ## License
 

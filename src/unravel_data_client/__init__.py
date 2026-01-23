@@ -21,23 +21,28 @@ Example:
 
 __version__ = "0.1.0"
 
-from .client import (
-    APIError,
-    DownloadError,
-    UnravelDataError,
+# Exception classes from client
+from .client import APIError, DownloadError, UnravelDataError
+
+# General utilities
+from .general import get_symbols, get_symbols_async
+
+# OHLCV data functions
+from .ohlcv import (
     get_ohlcv_historical,
     get_ohlcv_historical_async,
     get_ohlcv_historical_multi,
-    get_symbols,
-    get_symbols_async,
 )
+
+# Type definitions
 from .types import ArrivalTime, Exchange, Period
 
 __all__ = [
-    # Functions
+    # OHLCV Functions
     "get_ohlcv_historical",
     "get_ohlcv_historical_async",
     "get_ohlcv_historical_multi",
+    # General Functions
     "get_symbols",
     "get_symbols_async",
     # Exceptions
