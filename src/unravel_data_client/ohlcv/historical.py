@@ -16,7 +16,6 @@ import polars as pl
 from tqdm.auto import tqdm
 
 from ..client import (
-    APIError,
     download_parquet_with_retry,
     get_http_client,
     handle_api_error,

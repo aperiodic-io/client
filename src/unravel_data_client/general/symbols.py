@@ -7,7 +7,7 @@ from the Unravel API.
 
 from __future__ import annotations
 
-from ..client import APIError, get_http_client, handle_api_error, run_async
+from ..client import get_http_client, handle_api_error, run_async
 from ..config import DEFAULT_BASE_URL
 from ..types import Exchange, SymbolsResponse
 

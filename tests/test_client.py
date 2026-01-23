@@ -2,12 +2,10 @@
 
 from datetime import date
 
-import polars as pl
 import pytest
 
 from unravel_data_client import (
     APIError,
-    DownloadError,
     get_ohlcv_historical,
     get_symbols,
 )

@@ -38,19 +38,15 @@ from .ohlcv import (
 from .types import ArrivalTime, Exchange, Period
 
 __all__ = [
-    # OHLCV Functions
+    "APIError",
+    "ArrivalTime",
+    "DownloadError",
+    "Exchange",
+    "Period",
+    "UnravelDataError",
     "get_ohlcv_historical",
     "get_ohlcv_historical_async",
     "get_ohlcv_historical_multi",
-    # General Functions
     "get_symbols",
     "get_symbols_async",
-    # Exceptions
-    "APIError",
-    "DownloadError",
-    "UnravelDataError",
-    # Types
-    "ArrivalTime",
-    "Exchange",
-    "Period",
 ]

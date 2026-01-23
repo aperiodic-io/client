@@ -212,4 +212,4 @@ async def handle_api_error(response: httpx.Response) -> None:
             raise APIError(
                 message=response.text or "Unknown error",
                 status_code=response.status_code,
-            )
+            ) from None
