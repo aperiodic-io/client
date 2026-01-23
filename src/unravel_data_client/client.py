@@ -172,7 +172,6 @@ async def download_parquet_with_retry(
                 response = await client.get(url, follow_redirects=True)
                 response.raise_for_status()
 
-                # Read parquet from bytes using Polars
                 buffer = BytesIO(response.content)
                 df = pl.read_parquet(buffer)
 
@@ -182,11 +181,9 @@ async def download_parquet_with_retry(
                 last_exception = e
 
                 if attempt < max_retries:
-                    # Exponential backoff with jitter
                     delay = backoff_base * (2**attempt) + random.uniform(0, 1)
                     await asyncio.sleep(delay)
 
-        # All retries exhausted
         raise DownloadError(year, month, last_exception or Exception("Unknown error"))
 
 
