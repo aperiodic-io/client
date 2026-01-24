@@ -1,13 +1,21 @@
 """Tests for the Unravel Data Client."""
 
+import os
 from datetime import date
 
+import polars as pl
 import pytest
 
 from unravel_data_client import (
     APIError,
     get_ohlcv_historical,
     get_symbols,
+)
+
+# Get API key from environment variable (injected by CI)
+API_KEY = os.environ.get("UNRAVEL_API_KEY")
+requires_api_key = pytest.mark.skipif(
+    API_KEY is None, reason="UNRAVEL_API_KEY environment variable not set"
 )
 
 
@@ -30,10 +38,26 @@ class TestGetOhlcvHistorical:
 
         assert exc_info.value.status_code == 401
 
+    @requires_api_key
     def test_returns_dataframe(self):
         """Test that the function returns a Polars DataFrame."""
-        # This test requires a valid API key - skip if not available
-        pytest.skip("Requires valid API key")
+        result = get_ohlcv_historical(
+            api_key=API_KEY,
+            arrival_time="true",
+            period="1d",
+            exchange="binance-futures",
+            symbol="btcusdt",
+            start_date=date(2024, 1, 1),
+            end_date=date(2024, 1, 7),
+            show_progress=False,
+        )
+
+        assert isinstance(result, pl.DataFrame)
+        assert len(result) > 0
+        # Check expected columns exist
+        expected_columns = ["open", "high", "low", "close", "volume"]
+        for col in expected_columns:
+            assert col in result.columns
 
     def test_date_range_validation(self):
         """Test that start_date must be before end_date."""
@@ -66,10 +90,18 @@ class TestGetSymbols:
 
         assert exc_info.value.status_code == 401
 
+    @requires_api_key
     def test_returns_list(self):
         """Test that the function returns a list of symbols."""
-        # This test requires a valid API key - skip if not available
-        pytest.skip("Requires valid API key")
+        result = get_symbols(
+            api_key=API_KEY,
+            exchange="binance-futures",
+        )
+
+        assert isinstance(result, list)
+        assert len(result) > 0
+        # Check that btcusdt is in the list (should always be available)
+        assert "btcusdt" in result
 
     def test_invalid_exchange_raises_error(self):
         """Test that an invalid exchange raises APIError."""
