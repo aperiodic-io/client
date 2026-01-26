@@ -12,7 +12,7 @@ from ..config import DEFAULT_BASE_URL
 from ..types import Exchange, SymbolsResponse
 
 
-async def _get_symbols_async(
+async def get_symbols_async(
     api_key: str,
     exchange: Exchange,
     bucket: str = "ohlcv",
@@ -69,7 +69,7 @@ def get_symbols(
         >>> print(symbols[:10])  # First 10 symbols
     """
     return run_async(
-        _get_symbols_async(
+        get_symbols_async(
             api_key=api_key,
             exchange=exchange,
             bucket=bucket,
@@ -77,23 +77,3 @@ def get_symbols(
         )
     )
 
-
-async def get_symbols_async(
-    api_key: str,
-    exchange: Exchange,
-    bucket: str = "ohlcv",
-    base_url: str = DEFAULT_BASE_URL,
-) -> list[str]:
-    """
-    Async version of get_symbols.
-
-    Use this when you're already in an async context.
-
-    See get_symbols for full documentation.
-    """
-    return await _get_symbols_async(
-        api_key=api_key,
-        exchange=exchange,
-        bucket=bucket,
-        base_url=base_url,
-    )

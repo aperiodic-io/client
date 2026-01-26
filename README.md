@@ -61,7 +61,6 @@ def get_ohlcv_historical(
     symbol: str,
     start_date: date,
     end_date: date,
-    base_url: str = "https://unravel.finance/api/v1",
     show_progress: bool = True,
     max_concurrent: int = 10,
 ) -> pl.DataFrame

@@ -1,10 +1,3 @@
-"""
-OHLCV Historical Data Retrieval.
-
-This module provides functions to fetch historical OHLCV (Open, High, Low, Close, Volume)
-candlestick data from the Unravel API with parallel downloads and retry logic.
-"""
-
 from __future__ import annotations
 
 import asyncio
@@ -58,7 +51,7 @@ async def _fetch_presigned_urls(
     return response.json()
 
 
-async def _get_ohlcv_historical_async(
+async def get_ohlcv_historical_async(
     api_key: str,
     timestamp: TimestampType,
     interval: Interval,
@@ -179,7 +172,6 @@ def get_ohlcv_historical(
         symbol: Trading pair symbol (e.g., 'btcusdt', 'ethusdt')
         start_date: Start date for the data range
         end_date: End date for the data range (inclusive)
-        base_url: API base URL (default: https://unravel.finance/api/v1)
         show_progress: Whether to show download progress bar (default: True)
         max_concurrent: Maximum concurrent downloads (default: 10)
 
@@ -213,7 +205,7 @@ def get_ohlcv_historical(
         >>> print(df.head())
     """
     return run_async(
-        _get_ohlcv_historical_async(
+        get_ohlcv_historical_async(
             api_key=api_key,
             timestamp=timestamp,
             interval=interval,
@@ -227,39 +219,6 @@ def get_ohlcv_historical(
         )
     )
 
-
-async def get_ohlcv_historical_async(
-    api_key: str,
-    timestamp: TimestampType,
-    interval: Interval,
-    exchange: Exchange,
-    symbol: str,
-    start_date: date,
-    end_date: date,
-    base_url: str = DEFAULT_BASE_URL,
-    show_progress: bool = True,
-    max_concurrent: int = MAX_CONCURRENT_DOWNLOADS,
-) -> pl.DataFrame:
-    """
-    Async version of get_ohlcv_historical.
-
-    Use this when you're already in an async context or want to fetch
-    data for multiple symbols concurrently.
-
-    See get_ohlcv_historical for full documentation.
-    """
-    return await _get_ohlcv_historical_async(
-        api_key=api_key,
-        timestamp=timestamp,
-        interval=interval,
-        exchange=exchange,
-        symbol=symbol,
-        start_date=start_date,
-        end_date=end_date,
-        base_url=base_url,
-        show_progress=show_progress,
-        max_concurrent=max_concurrent,
-    )
 
 
 def get_ohlcv_historical_multi(
@@ -312,7 +271,7 @@ def get_ohlcv_historical_multi(
 
         async def fetch_with_semaphore(symbol: str) -> tuple[str, pl.DataFrame]:
             async with semaphore:
-                df = await _get_ohlcv_historical_async(
+                df = await get_ohlcv_historical_async(
                     api_key=api_key,
                     timestamp=timestamp,
                     interval=interval,
