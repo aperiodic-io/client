@@ -27,8 +27,8 @@ class TestGetOhlcvHistorical:
         with pytest.raises(APIError) as exc_info:
             get_ohlcv_historical(
                 api_key="invalid-key",
-                arrival_time="true",
-                period="1d",
+                timestamp="true",
+                interval="1d",
                 exchange="binance-futures",
                 symbol="btcusdt",
                 start_date=date(2024, 1, 1),
@@ -43,8 +43,8 @@ class TestGetOhlcvHistorical:
         """Test that the function returns a Polars DataFrame."""
         result = get_ohlcv_historical(
             api_key=API_KEY,
-            arrival_time="true",
-            period="1d",
+            timestamp="true",
+            interval="1d",
             exchange="binance-futures",
             symbol="btcusdt",
             start_date=date(2024, 1, 1),
@@ -65,8 +65,8 @@ class TestGetOhlcvHistorical:
         with pytest.raises(APIError) as exc_info:
             get_ohlcv_historical(
                 api_key="test-key",
-                arrival_time="true",
-                period="1d",
+                timestamp="true",
+                interval="1d",
                 exchange="binance-futures",
                 symbol="btcusdt",
                 start_date=date(2024, 3, 1),
@@ -118,19 +118,19 @@ class TestGetSymbols:
 class TestTypes:
     """Tests for type definitions."""
 
-    def test_arrival_time_literal(self):
+    def test_timestamp_literal(self):
         """Test ArrivalTime type accepts valid values."""
-        from unravel_data_client.types import ArrivalTime
+        from unravel_data_client.types import TimestampType
 
         # These should be valid - just checking the type exists
-        valid_values: list[ArrivalTime] = ["exchange", "true"]
+        valid_values: list[TimestampType] = ["exchange", "true"]
         assert len(valid_values) == 2
 
-    def test_period_literal(self):
-        """Test Period type accepts valid values."""
-        from unravel_data_client.types import Period
+    def test_interval_literal(self):
+        """Test Interval type accepts valid values."""
+        from unravel_data_client.types import Interval
 
-        valid_values: list[Period] = ["1m", "5m", "15m", "30m", "1h", "4h", "1d"]
+        valid_values: list[Interval] = ["1m", "5m", "15m", "30m", "1h", "4h", "1d"]
         assert len(valid_values) == 7
 
     def test_exchange_literal(self):

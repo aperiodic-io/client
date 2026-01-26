@@ -22,7 +22,7 @@ from ..client import (
     run_async,
 )
 from ..config import DEFAULT_BASE_URL, MAX_CONCURRENT_DOWNLOADS
-from ..types import AggregateDataResponse, ArrivalTime, Exchange, Period
+from ..types import AggregateDataResponse, TimestampType, Exchange, Interval
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -32,8 +32,8 @@ async def _fetch_presigned_urls(
     client: httpx.AsyncClient,
     api_key: str,
     bucket: str,
-    arrival_time: ArrivalTime,
-    period: Period,
+    timestamp: TimestampType,
+    interval: Interval,
     exchange: Exchange,
     symbol: str,
     start_date: date,
@@ -43,8 +43,8 @@ async def _fetch_presigned_urls(
     """Fetch pre-signed URLs for all files in the date range."""
     url = f"{base_url}/data/{bucket}"
     params = {
-        "arrival_time": arrival_time,
-        "period": period,
+        "timestamp": timestamp,
+        "interval": interval,
         "exchange": exchange,
         "symbol": symbol,
         "start_date": start_date.isoformat(),
@@ -60,8 +60,8 @@ async def _fetch_presigned_urls(
 
 async def _get_ohlcv_historical_async(
     api_key: str,
-    arrival_time: ArrivalTime,
-    period: Period,
+    timestamp: TimestampType,
+    interval: Interval,
     exchange: Exchange,
     symbol: str,
     start_date: date,
@@ -82,8 +82,8 @@ async def _get_ohlcv_historical_async(
             client=client,
             api_key=api_key,
             bucket="ohlcv",
-            arrival_time=arrival_time,
-            period=period,
+            timestamp=timestamp,
+            interval=interval,
             exchange=exchange,
             symbol=symbol,
             start_date=start_date,
@@ -153,8 +153,8 @@ async def _get_ohlcv_historical_async(
 
 def get_ohlcv_historical(
     api_key: str,
-    arrival_time: ArrivalTime,
-    period: Period,
+    timestamp: TimestampType,
+    interval: Interval,
     exchange: Exchange,
     symbol: str,
     start_date: date,
@@ -172,9 +172,9 @@ def get_ohlcv_historical(
 
     Args:
         api_key: Your Unravel API key
-        arrival_time: Timestamp source - 'exchange' for exchange-reported time,
+        timestamp: Timestamp source - 'exchange' for exchange-reported time,
                      'true' for actual arrival time at Unravel servers
-        period: Aggregation period ('1m', '5m', '15m', '30m', '1h', '4h', '1d')
+        interval: Aggregation interval ('1m', '5m', '15m', '30m', '1h', '4h', '1d')
         exchange: Source exchange ('binance-futures', 'binance')
         symbol: Trading pair symbol (e.g., 'btcusdt', 'ethusdt')
         start_date: Start date for the data range
@@ -203,8 +203,8 @@ def get_ohlcv_historical(
         >>>
         >>> df = get_ohlcv_historical(
         ...     api_key="your-api-key",
-        ...     arrival_time="true",
-        ...     period="1h",
+        ...     timestamp="true",
+        ...     interval="1h",
         ...     exchange="binance-futures",
         ...     symbol="btcusdt",
         ...     start_date=date(2024, 1, 1),
@@ -215,8 +215,8 @@ def get_ohlcv_historical(
     return run_async(
         _get_ohlcv_historical_async(
             api_key=api_key,
-            arrival_time=arrival_time,
-            period=period,
+            timestamp=timestamp,
+            interval=interval,
             exchange=exchange,
             symbol=symbol,
             start_date=start_date,
@@ -230,8 +230,8 @@ def get_ohlcv_historical(
 
 async def get_ohlcv_historical_async(
     api_key: str,
-    arrival_time: ArrivalTime,
-    period: Period,
+    timestamp: TimestampType,
+    interval: Interval,
     exchange: Exchange,
     symbol: str,
     start_date: date,
@@ -250,8 +250,8 @@ async def get_ohlcv_historical_async(
     """
     return await _get_ohlcv_historical_async(
         api_key=api_key,
-        arrival_time=arrival_time,
-        period=period,
+        timestamp=timestamp,
+        interval=interval,
         exchange=exchange,
         symbol=symbol,
         start_date=start_date,
@@ -264,8 +264,8 @@ async def get_ohlcv_historical_async(
 
 def get_ohlcv_historical_multi(
     api_key: str,
-    arrival_time: ArrivalTime,
-    period: Period,
+    timestamp: TimestampType,
+    interval: Interval,
     exchange: Exchange,
     symbols: Sequence[str],
     start_date: date,
@@ -280,8 +280,8 @@ def get_ohlcv_historical_multi(
 
     Args:
         api_key: Your Unravel API key
-        arrival_time: Timestamp source
-        period: Aggregation period
+        timestamp: Timestamp source
+        interval: Aggregation interval
         exchange: Source exchange
         symbols: List of trading pair symbols
         start_date: Start date for the data range
@@ -297,8 +297,8 @@ def get_ohlcv_historical_multi(
     Example:
         >>> df_dict = get_ohlcv_historical_multi(
         ...     api_key="your-api-key",
-        ...     arrival_time="true",
-        ...     period="1h",
+        ...     timestamp="true",
+        ...     interval="1h",
         ...     exchange="binance-futures",
         ...     symbols=["btcusdt", "ethusdt", "solusdt"],
         ...     start_date=date(2024, 1, 1),
@@ -314,8 +314,8 @@ def get_ohlcv_historical_multi(
             async with semaphore:
                 df = await _get_ohlcv_historical_async(
                     api_key=api_key,
-                    arrival_time=arrival_time,
-                    period=period,
+                    timestamp=timestamp,
+                    interval=interval,
                     exchange=exchange,
                     symbol=symbol,
                     start_date=start_date,

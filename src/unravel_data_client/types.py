@@ -3,8 +3,8 @@
 from typing import Literal, TypedDict
 
 # Literal types matching the API
-ArrivalTime = Literal["exchange", "true"]
-Period = Literal["1m", "5m", "15m", "30m", "1h", "4h", "1d"]
+TimestampType = Literal["exchange", "true"]
+Interval = Literal["1m", "5m", "15m", "30m", "1h", "4h", "1d"]
 Exchange = Literal["binance-futures", "binance"]
 
 

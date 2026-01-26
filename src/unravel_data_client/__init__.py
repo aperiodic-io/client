@@ -10,8 +10,8 @@ Example:
     >>>
     >>> df = get_ohlcv_historical(
     ...     api_key="your-api-key",
-    ...     arrival_time="true",
-    ...     period="1h",
+    ...     timestamp="true",
+    ...     interval="1h",
     ...     exchange="binance-futures",
     ...     symbol="btcusdt",
     ...     start_date=date(2024, 1, 1),
@@ -35,14 +35,14 @@ from .ohlcv import (
 )
 
 # Type definitions
-from .types import ArrivalTime, Exchange, Period
+from .types import TimestampType, Exchange, Interval
 
 __all__ = [
     "APIError",
-    "ArrivalTime",
+    "TimestampType",
     "DownloadError",
     "Exchange",
-    "Period",
+    "Interval",
     "UnravelDataError",
     "get_ohlcv_historical",
     "get_ohlcv_historical_async",

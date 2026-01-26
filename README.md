@@ -25,8 +25,8 @@ from unravel_data_client import get_ohlcv_historical
 # Fetch hourly OHLCV data for BTC
 df = get_ohlcv_historical(
     api_key="your-api-key",
-    arrival_time="true",
-    period="1h",
+    timestamp="true",
+    interval="1h",
     exchange="binance-futures",
     symbol="btcusdt",
     start_date=date(2024, 1, 1),
@@ -55,8 +55,8 @@ Fetch historical OHLCV (Open, High, Low, Close, Volume) data.
 ```python
 def get_ohlcv_historical(
     api_key: str,
-    arrival_time: Literal["exchange", "true"],
-    period: Literal["1m", "5m", "15m", "30m", "1h", "4h", "1d"],
+    timestamp: Literal["exchange", "true"],
+    interval: Literal["1m", "5m", "15m", "30m", "1h", "4h", "1d"],
     exchange: Literal["binance-futures", "binance"],
     symbol: str,
     start_date: date,
@@ -72,8 +72,8 @@ def get_ohlcv_historical(
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `api_key` | `str` | Your Unravel API key |
-| `arrival_time` | `"exchange"` \| `"true"` | Timestamp source - `"exchange"` for exchange-reported time, `"true"` for actual arrival time |
-| `period` | `str` | Aggregation period (`"1m"`, `"5m"`, `"15m"`, `"30m"`, `"1h"`, `"4h"`, `"1d"`) |
+| `timestamp` | `"exchange"` \| `"true"` | Timestamp source - `"exchange"` for exchange-reported time, `"true"` for actual arrival time |
+| `interval` | `str` | Aggregation interval (`"1m"`, `"5m"`, `"15m"`, `"30m"`, `"1h"`, `"4h"`, `"1d"`) |
 | `exchange` | `str` | Source exchange (`"binance-futures"`, `"binance"`) |
 | `symbol` | `str` | Trading pair symbol (e.g., `"btcusdt"`, `"ethusdt"`) |
 | `start_date` | `date` | Start date for the data range |
@@ -104,8 +104,8 @@ from unravel_data_client import get_ohlcv_historical_async
 async def main():
     df = await get_ohlcv_historical_async(
         api_key="your-api-key",
-        arrival_time="true",
-        period="1h",
+        timestamp="true",
+        interval="1h",
         exchange="binance-futures",
         symbol="btcusdt",
         start_date=date(2024, 1, 1),
@@ -154,8 +154,8 @@ from unravel_data_client import get_ohlcv_historical_multi
 
 df_dict = get_ohlcv_historical_multi(
     api_key="your-api-key",
-    arrival_time="true",
-    period="1h",
+    timestamp="true",
+    interval="1h",
     exchange="binance-futures",
     symbols=["btcusdt", "ethusdt", "solusdt"],
     start_date=date(2024, 1, 1),
@@ -186,7 +186,7 @@ except DownloadError as e:
 Data is stored using Hive partitioning in Parquet format:
 
 ```
-{arrival_time}/{period}/exchange={exchange}/symbol={symbol}/year={year}/month={month}.parquet
+{timestamp}/{interval}/exchange={exchange}/symbol={symbol}/year={year}/month={month}.parquet
 ```
 
 The client handles all the complexity of fetching multiple monthly files and combining them into a single DataFrame.
