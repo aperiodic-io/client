@@ -10,6 +10,7 @@ Requirements: obstore, polars
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
@@ -56,7 +57,7 @@ def create_store(bucket: str) -> S3Store:
     )
 
 
-def _list_files(
+async def _list_files(
     metric: MetricType,
     timestamp_type: TimestampType,
     interval: Interval,
@@ -86,9 +87,9 @@ def _list_files(
     )
     # List all objects with the prefix
     files = []
-    list_result = obs.list(store, prefix=prefix)
+    list_stream = obs.list(store, prefix=prefix)
 
-    for batch in list_result:
+    async for batch in list_stream:
         for obj in batch:
             if obj["path"].endswith(".parquet"):
                 files.append(obj["path"])
@@ -96,7 +97,7 @@ def _list_files(
     return sorted(files)
 
 
-def list_symbols(
+async def list_symbols(
     metric: MetricType,
     timestamp_type: Literal["true", "exchange"] = "true",
     interval: str = "1h",
@@ -123,11 +124,10 @@ def list_symbols(
         else f"{timestamp_type}/{interval}/exchange={exchange}/"
     )
 
-    # Use list_with_delimiter to get "directories" (symbols)
-    list_result = obs.list(store, prefix=prefix)
+    list_stream = obs.list(store, prefix=prefix)
 
     symbols = set()
-    for batch in list_result:
+    async for batch in list_stream:
         for obj in batch:
             path = obj["path"]
             # Extract symbol from path like: .../symbol=btcusdt/year=.../...
@@ -138,7 +138,7 @@ def list_symbols(
     return sorted(symbols)
 
 
-def download_symbol(
+async def download_symbol(
     symbol: str,
     metric: MetricType,
     timestamp_type: TimestampType,
@@ -165,7 +165,7 @@ def download_symbol(
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
-    files = _list_files(
+    files = await _list_files(
         metric=metric,
         timestamp_type=timestamp_type,
         interval=interval,
@@ -173,23 +173,25 @@ def download_symbol(
         symbol=symbol,
     )
 
-    downloaded = []
-    for file_path in files:
+    async def download_file(file_path: str) -> Path:
         local_path = output_path / file_path
         local_path.parent.mkdir(parents=True, exist_ok=True)
         print(f"Downloading {file_path} -> {local_path}")
-        data = store.get(file_path)
-        content = b"".join(data)
+        result = await obs.get_async(store, file_path)
+        content = await result.bytes_async()
 
         with open(local_path, "wb") as f:
             f.write(content)
 
-        downloaded.append(local_path)
+        return local_path
 
-    return downloaded
+    # Download all files concurrently
+    downloaded = await asyncio.gather(*[download_file(f) for f in files])
+
+    return list(downloaded)
 
 
-def load_symbol_data(
+async def load_symbol_data(
     symbol: str,
     metric: MetricType,
     timestamp_type: TimestampType,
@@ -197,7 +199,7 @@ def load_symbol_data(
     exchange: Exchange,
     output_dir: str | Path,
 ) -> pl.DataFrame:
-    downloaded = download_symbol(
+    downloaded = await download_symbol(
         symbol=symbol,
         output_dir=output_dir,
         metric=metric,
@@ -211,39 +213,43 @@ def load_symbol_data(
 
 # Example usage
 if __name__ == "__main__":
-    # # Example 1: List all symbols
-    # print("=== Listing available symbols ===")
-    # symbols = list_symbols(
-    #     metric="ohlcv",
-    #     timestamp_type="true",
-    #     interval="1h",
-    #     exchange="binance-futures",
-    # )
-    # print(f"Found {len(symbols)} symbols")
-    # if symbols:
-    #     print(f"First 10: {symbols[:10]}")
 
-    # Example 2: Download data for a specific symbol
-    print("\n=== Downloading data for btcusdt ===")
-    downloaded = download_symbol(
-        metric="ohlcv",
-        symbol="btcusdt",
-        timestamp_type="true",
-        interval="1h",
-        exchange="binance-futures",
-        output_dir="./downloads",
-    )
-    # Example 3: Load data directly into DataFrame
-    print("\n=== Loading btcusdt data into DataFrame ===")
-    df = load_symbol_data(
-        metric="ohlcv",
-        output_dir="./downloads",
-        symbol="btcusdt",
-        timestamp_type="true",
-        interval="1h",
-        exchange="binance-futures",
-    )
-    print(f"Loaded {len(df)} rows")
-    print(df.head())
+    async def main():
+        # # Example 1: List all symbols
+        symbols = await list_symbols(
+            metric="ohlcv",
+            timestamp_type="true",
+            interval="1h",
+            exchange="binance-futures",
+        )
+        print(f"Found {len(symbols)} symbols")
+        if symbols:
+            print(f"First 10: {symbols[:10]}")
+
+        # Example 2: Download data for a specific symbol
+        print("\n=== Downloading data for btcusdt ===")
+        downloaded = await download_symbol(
+            metric="ohlcv",
+            symbol="btcusdt",
+            timestamp_type="true",
+            interval="1h",
+            exchange="binance-futures",
+            output_dir="./downloads",
+        )
+
+        # Example 3: Load data directly into DataFrame (downloads data again)
+        print("\n=== Loading btcusdt data into DataFrame ===")
+        df = await load_symbol_data(
+            metric="ohlcv",
+            output_dir="./downloads",
+            symbol="btcusdt",
+            timestamp_type="true",
+            interval="1h",
+            exchange="binance-futures",
+        )
+        print(f"Loaded {len(df)} rows")
+        print(df.head())
+
+    asyncio.run(main())
 
 # %%
