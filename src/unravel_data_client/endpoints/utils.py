@@ -24,6 +24,7 @@ async def _fetch_presigned_urls(
     client: httpx.AsyncClient,
     api_key: str,
     bucket: str,
+    folder: str,
     timestamp: TimestampType,
     interval: Interval,
     exchange: Exchange,
@@ -52,6 +53,8 @@ async def _fetch_presigned_urls(
 
 async def _get_files_from_bucket_async(
     api_key: str,
+    bucket: str,
+    folder: str,
     timestamp: TimestampType,
     interval: Interval,
     exchange: Exchange,

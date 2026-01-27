@@ -1,10 +1,3 @@
-"""
-Symbols Listing.
-
-This module provides functions to retrieve available trading pair symbols
-from the Unravel API.
-"""
-
 from __future__ import annotations
 
 from ..client import get_http_client, handle_api_error, run_async

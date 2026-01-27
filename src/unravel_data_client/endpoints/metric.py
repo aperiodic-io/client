@@ -9,7 +9,7 @@ from ..client import (
     run_async,
 )
 from ..config import DEFAULT_BASE_URL, MAX_CONCURRENT_DOWNLOADS
-from ..types import Exchange, Interval, TimestampType
+from ..types import Exchange, Interval, MetricType, TimestampType
 from .utils import _get_files_from_bucket_async
 
 if TYPE_CHECKING:
@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 
 async def get_metric_async(
     api_key: str,
+    metric_type: MetricType,
     timestamp: TimestampType,
     interval: Interval,
     exchange: Exchange,

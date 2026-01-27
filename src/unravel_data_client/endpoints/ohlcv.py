@@ -1,24 +1,20 @@
 from __future__ import annotations
 
-import asyncio
-from datetime import date, datetime
+from datetime import date
 from typing import TYPE_CHECKING
 
-import httpx
 import polars as pl
-from tqdm.auto import tqdm
 
 from ..client import (
-    download_parquet_with_retry,
-    get_http_client,
-    handle_api_error,
     run_async,
 )
 from ..config import DEFAULT_BASE_URL, MAX_CONCURRENT_DOWNLOADS
-from ..types import AggregateDataResponse, TimestampType, Exchange, Interval
+from ..types import Exchange, Interval, TimestampType
+from .utils import _get_files_from_bucket_async
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    pass
+
 
 async def get_ohlcv_async(
     api_key: str,
@@ -93,7 +89,7 @@ def get_ohlcv(
     max_concurrent: int = MAX_CONCURRENT_DOWNLOADS,
 ) -> pl.DataFrame:
     return run_async(
-        get_metric_async(
+        get_ohlcv_async(
             api_key=api_key,
             timestamp=timestamp,
             interval=interval,
@@ -106,5 +102,3 @@ def get_ohlcv(
             max_concurrent=max_concurrent,
         )
     )
-
-
