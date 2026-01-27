@@ -18,28 +18,6 @@ async def get_symbols_async(
     bucket: str = "ohlcv",
     base_url: str = DEFAULT_BASE_URL,
 ) -> list[str]:
-    """Async implementation of get_symbols."""
-    async with get_http_client(timeout=30.0) as client:
-        url = f"{base_url}/data/symbols"
-        params = {
-            "exchange": exchange,
-            "bucket": bucket,
-        }
-        headers = {"X-API-KEY": api_key}
-
-        response = await client.get(url, params=params, headers=headers)
-        await handle_api_error(response)
-
-        data: SymbolsResponse = response.json()
-        return data["symbols"]
-
-
-def get_symbols(
-    api_key: str,
-    exchange: Exchange,
-    bucket: str = "ohlcv",
-    base_url: str = DEFAULT_BASE_URL,
-) -> list[str]:
     """
     Get list of available symbols for an exchange.
 
@@ -68,6 +46,27 @@ def get_symbols(
         >>> print(f"Found {len(symbols)} symbols")
         >>> print(symbols[:10])  # First 10 symbols
     """
+    async with get_http_client(timeout=30.0) as client:
+        url = f"{base_url}/data/symbols"
+        params = {
+            "exchange": exchange,
+            "bucket": bucket,
+        }
+        headers = {"X-API-KEY": api_key}
+
+        response = await client.get(url, params=params, headers=headers)
+        await handle_api_error(response)
+
+        data: SymbolsResponse = response.json()
+        return data["symbols"]
+
+
+def get_symbols(
+    api_key: str,
+    exchange: Exchange,
+    bucket: str = "ohlcv",
+    base_url: str = DEFAULT_BASE_URL,
+) -> list[str]:
     return run_async(
         get_symbols_async(
             api_key=api_key,
@@ -76,4 +75,3 @@ def get_symbols(
             base_url=base_url,
         )
     )
-

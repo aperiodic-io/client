@@ -8,7 +8,7 @@ import pytest
 
 from unravel_data_client import (
     APIError,
-    get_ohlcv_historical,
+    get_metric,
     get_symbols,
 )
 
@@ -20,12 +20,12 @@ requires_api_key = pytest.mark.skipif(
 
 
 class TestGetOhlcvHistorical:
-    """Tests for get_ohlcv_historical function."""
+    """Tests for get_metric function."""
 
     def test_invalid_api_key_raises_error(self):
         """Test that an invalid API key raises APIError."""
         with pytest.raises(APIError) as exc_info:
-            get_ohlcv_historical(
+            get_metric(
                 api_key="invalid-key",
                 timestamp="true",
                 interval="1d",
@@ -41,7 +41,7 @@ class TestGetOhlcvHistorical:
     @requires_api_key
     def test_returns_dataframe(self):
         """Test that the function returns a Polars DataFrame."""
-        result = get_ohlcv_historical(
+        result = get_metric(
             api_key=API_KEY,
             timestamp="true",
             interval="1d",
@@ -63,7 +63,7 @@ class TestGetOhlcvHistorical:
         """Test that start_date must be before end_date."""
         # The API should return a 400 error for invalid date range
         with pytest.raises(APIError) as exc_info:
-            get_ohlcv_historical(
+            get_metric(
                 api_key="test-key",
                 timestamp="true",
                 interval="1d",

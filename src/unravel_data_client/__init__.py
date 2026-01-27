@@ -1,40 +1,14 @@
-"""
-Unravel Data Client - Client library for Unravel aggregate market data API.
-
-This package provides easy access to Unravel's pre-computed market data aggregates
-including OHLCV candlestick data for crypto exchanges.
-
-Example:
-    >>> from datetime import date
-    >>> from unravel_data_client import get_ohlcv_historical
-    >>>
-    >>> df = get_ohlcv_historical(
-    ...     api_key="your-api-key",
-    ...     timestamp="true",
-    ...     interval="1h",
-    ...     exchange="binance-futures",
-    ...     symbol="btcusdt",
-    ...     start_date=date(2024, 1, 1),
-    ...     end_date=date(2024, 3, 31),
-    ... )
-"""
-
 __version__ = "0.1.0"
 
-# Exception classes from client
 from .client import APIError, DownloadError, UnravelDataError
 
-# General utilities
-from .general import get_symbols, get_symbols_async
+from .endpoints.symbols import get_symbols, get_symbols_async
 
-# OHLCV data functions
-from .ohlcv import (
-    get_ohlcv_historical,
-    get_ohlcv_historical_async,
-    get_ohlcv_historical_multi,
+from endpoints.historical import (
+    get_metric,
+    get_metric_async,
 )
 
-# Type definitions
 from .types import TimestampType, Exchange, Interval
 
 __all__ = [
@@ -44,9 +18,8 @@ __all__ = [
     "Exchange",
     "Interval",
     "UnravelDataError",
-    "get_ohlcv_historical",
-    "get_ohlcv_historical_async",
-    "get_ohlcv_historical_multi",
+    "get_historical",
+    "get_metric_async",
     "get_symbols",
     "get_symbols_async",
 ]

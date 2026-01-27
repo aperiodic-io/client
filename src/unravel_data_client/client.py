@@ -1,13 +1,3 @@
-"""
-Unravel Data Client - Shared client utilities and base functionality.
-
-This module provides shared utilities for the Unravel Data Client including:
-- Async execution helpers for Jupyter compatibility
-- Exception classes
-- Retry mechanisms for robust data fetching
-- Common HTTP client utilities
-"""
-
 from __future__ import annotations
 
 import asyncio
@@ -85,56 +75,6 @@ def get_http_client(timeout: float = DEFAULT_TIMEOUT) -> httpx.AsyncClient:
     return httpx.AsyncClient(timeout=httpx.Timeout(timeout))
 
 
-async def fetch_with_retry(
-    client: httpx.AsyncClient,
-    url: str,
-    params: dict | None = None,
-    headers: dict | None = None,
-    max_retries: int = MAX_RETRIES,
-    backoff_base: float = RETRY_BACKOFF_BASE,
-) -> httpx.Response:
-    """
-    Fetch a URL with exponential backoff retry logic.
-
-    Args:
-        client: The HTTP client to use
-        url: The URL to fetch
-        params: Query parameters
-        headers: Request headers
-        max_retries: Maximum number of retry attempts
-        backoff_base: Base for exponential backoff calculation
-
-    Returns:
-        The HTTP response
-
-    Raises:
-        The last exception if all retries fail
-    """
-    last_exception: Exception | None = None
-
-    for attempt in range(max_retries + 1):
-        try:
-            response = await client.get(
-                url, params=params, headers=headers, follow_redirects=True
-            )
-            response.raise_for_status()
-            return response
-        except (httpx.HTTPStatusError, httpx.RequestError) as e:
-            last_exception = e
-
-            if attempt < max_retries:
-                # Exponential backoff with jitter
-                delay = backoff_base * (2**attempt) + random.uniform(0, 1)
-                await asyncio.sleep(delay)
-            else:
-                raise
-
-    # This should never be reached, but for type safety
-    if last_exception:
-        raise last_exception
-    raise RuntimeError("Unexpected state in fetch_with_retry")
-
-
 async def download_parquet_with_retry(
     client: httpx.AsyncClient,
     url: str,
@@ -188,15 +128,6 @@ async def download_parquet_with_retry(
 
 
 async def handle_api_error(response: httpx.Response) -> None:
-    """
-    Handle API error responses by raising appropriate exceptions.
-
-    Args:
-        response: The HTTP response to check
-
-    Raises:
-        APIError: If the response indicates an error
-    """
     if response.status_code != 200:
         try:
             error_data = response.json()

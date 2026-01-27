@@ -20,10 +20,10 @@ pip install -e .
 
 ```python
 from datetime import date
-from unravel_data_client import get_ohlcv_historical
+from unravel_data_client import get_metric
 
 # Fetch hourly OHLCV data for BTC
-df = get_ohlcv_historical(
+df = get_metric(
     api_key="your-api-key",
     timestamp="true",
     interval="1h",
@@ -48,12 +48,12 @@ print(df.head())
 
 ## API Reference
 
-### `get_ohlcv_historical`
+### `get_metric`
 
 Fetch historical OHLCV (Open, High, Low, Close, Volume) data.
 
 ```python
-def get_ohlcv_historical(
+def get_metric(
     api_key: str,
     timestamp: Literal["exchange", "true"],
     interval: Literal["1m", "5m", "15m", "30m", "1h", "4h", "1d"],
@@ -92,16 +92,16 @@ def get_ohlcv_historical(
 - `close`: Closing price
 - `volume`: Trading volume
 
-### `get_ohlcv_historical_async`
+### `get_metric_async`
 
-Async version of `get_ohlcv_historical`. Use this when you're already in an async context.
+Async version of `get_metric`. Use this when you're already in an async context.
 
 ```python
 import asyncio
-from unravel_data_client import get_ohlcv_historical_async
+from unravel_data_client import get_metric_async
 
 async def main():
-    df = await get_ohlcv_historical_async(
+    df = await get_metric_async(
         api_key="your-api-key",
         timestamp="true",
         interval="1h",
@@ -144,14 +144,14 @@ print(symbols[:10])  # First 10 symbols
 
 `list[str]` - List of available symbol names (lowercase)
 
-### `get_ohlcv_historical_multi`
+### `get_metric_multi`
 
 Fetch data for multiple symbols concurrently.
 
 ```python
-from unravel_data_client import get_ohlcv_historical_multi
+from unravel_data_client import get_metric_multi
 
-df_dict = get_ohlcv_historical_multi(
+df_dict = get_metric_multi(
     api_key="your-api-key",
     timestamp="true",
     interval="1h",
@@ -168,10 +168,10 @@ eth_df = df_dict["ethusdt"]
 ## Error Handling
 
 ```python
-from unravel_data_client import get_ohlcv_historical, APIError, DownloadError
+from unravel_data_client import get_metric, APIError, DownloadError
 
 try:
-    df = get_ohlcv_historical(...)
+    df = get_metric(...)
 except APIError as e:
     print(f"API error {e.status_code}: {e.message}")
     if e.details:
@@ -209,10 +209,10 @@ You can import directly from the package or from submodules:
 
 ```python
 # Direct import (recommended)
-from unravel_data_client import get_ohlcv_historical, get_symbols
+from unravel_data_client import get_metric, get_symbols
 
 # Or import from submodules
-from unravel_data_client.ohlcv import get_ohlcv_historical
+from unravel_data_client.ohlcv import get_metric
 from unravel_data_client.general import get_symbols
 ```
 
