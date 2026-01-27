@@ -79,6 +79,7 @@ async def get_metric_async(
 
 def get_metric(
     api_key: str,
+    metric_type: MetricType,
     timestamp: TimestampType,
     interval: Interval,
     exchange: Exchange,
