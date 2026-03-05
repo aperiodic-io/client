@@ -1,4 +1,4 @@
-DEFAULT_BASE_URL = "https://unravel.finance/api/v1"
+DEFAULT_BASE_URL = "https://aperiodic.io/api/v1"
 
 MAX_CONCURRENT_DOWNLOADS = 10
 
