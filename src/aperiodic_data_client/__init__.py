@@ -1,6 +1,6 @@
 __version__ = "0.1.0"
 
-from .client import APIError, DownloadError, UnravelDataError
+from .client import APIError, DownloadError, AperiodicDataError
 
 from .endpoints.symbols import get_symbols, get_symbols_async
 from .endpoints.ohlcv import get_ohlcv, get_ohlcv_async
@@ -18,7 +18,7 @@ __all__ = [
     "L1Metric",
     "TimestampType",
     "TradeMetric",
-    "UnravelDataError",
+    "AperiodicDataError",
     "get_l1_metrics",
     "get_l1_metrics_async",
     "get_l2_metrics",

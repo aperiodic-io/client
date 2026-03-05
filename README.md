@@ -1,18 +1,18 @@
-# Unravel Data Client
+# Aperiodic Data Client
 
-Python client library for the Unravel aggregate market data API. Access pre-computed OHLCV candlestick data and other market aggregates with parallel downloads for optimal performance.
+Python client library for the Aperiodic aggregate market data API. Access pre-computed OHLCV candlestick data and other market aggregates with parallel downloads for optimal performance.
 
 ## Installation
 
 ```bash
-pip install unravel-data-client
+pip install aperiodic
 ```
 
 Or install from source:
 
 ```bash
-git clone https://github.com/unravel-finance/unravel-data-client.git
-cd unravel-data-client
+git clone https://github.com/aperiodic-io/aperiodic-client.git
+cd aperiodic-io
 pip install -e .
 ```
 
@@ -20,7 +20,7 @@ pip install -e .
 
 ```python
 from datetime import date
-from unravel_data_client import get_metric
+from aperiodic_data_client import get_metric
 
 # Fetch hourly OHLCV data for BTC
 df = get_metric(
@@ -70,7 +70,7 @@ def get_metric(
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `api_key` | `str` | Your Unravel API key |
+| `api_key` | `str` | Your Aperiodic API key |
 | `timestamp` | `"exchange"` \| `"true"` | Timestamp source - `"exchange"` for exchange-reported time, `"true"` for actual arrival time |
 | `interval` | `str` | Aggregation interval (`"1m"`, `"5m"`, `"15m"`, `"30m"`, `"1h"`, `"4h"`, `"1d"`) |
 | `exchange` | `str` | Source exchange (`"binance-futures"`, `"binance"`) |
@@ -98,7 +98,7 @@ Async version of `get_metric`. Use this when you're already in an async context.
 
 ```python
 import asyncio
-from unravel_data_client import get_metric_async
+from aperiodic_data_client import get_metric_async
 
 async def main():
     df = await get_metric_async(
@@ -120,7 +120,7 @@ df = asyncio.run(main())
 Get the list of available symbols for an exchange.
 
 ```python
-from unravel_data_client import get_symbols
+from aperiodic_data_client import get_symbols
 
 symbols = get_symbols(
     api_key="your-api-key",
@@ -135,7 +135,7 @@ print(symbols[:10])  # First 10 symbols
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `api_key` | `str` | Your Unravel API key |
+| `api_key` | `str` | Your Aperiodic API key |
 | `exchange` | `str` | Source exchange (`"binance-futures"`, `"binance"`) |
 | `bucket` | `str` | Data bucket (default: `"ohlcv"`) |
 | `base_url` | `str` | API base URL (optional) |
@@ -149,7 +149,7 @@ print(symbols[:10])  # First 10 symbols
 Fetch data for multiple symbols concurrently.
 
 ```python
-from unravel_data_client import get_metric_multi
+from aperiodic_data_client import get_metric_multi
 
 df_dict = get_metric_multi(
     api_key="your-api-key",
@@ -168,7 +168,7 @@ eth_df = df_dict["ethusdt"]
 ## Error Handling
 
 ```python
-from unravel_data_client import get_metric, APIError, DownloadError
+from aperiodic_data_client import get_metric, APIError, DownloadError
 
 try:
     df = get_metric(...)
@@ -195,7 +195,7 @@ The client handles all the complexity of fetching multiple monthly files and com
 The client is organized into modules for different data types:
 
 ```
-unravel_data_client/
+aperiodic_data_client/
 ├── ohlcv/              # OHLCV candlestick data
 │   └── historical.py   # Historical data retrieval
 ├── general/            # General utilities
@@ -209,11 +209,11 @@ You can import directly from the package or from submodules:
 
 ```python
 # Direct import (recommended)
-from unravel_data_client import get_metric, get_symbols
+from aperiodic_data_client import get_metric, get_symbols
 
 # Or import from submodules
-from unravel_data_client.ohlcv import get_metric
-from unravel_data_client.general import get_symbols
+from aperiodic_data_client.ohlcv import get_metric
+from aperiodic_data_client.general import get_symbols
 ```
 
 ## Requirements

@@ -32,7 +32,7 @@ jobs:
 
       - name: run-tests
         env:
-          UNRAVEL_API_KEY: ${{ secrets.UNRAVEL_API_KEY }}
+          APERIODIC_API_KEY: ${{ secrets.APERIODIC_API_KEY }}
         run: pytest . -s --cov --durations 0
 
       - uses: codecov/codecov-action@v3

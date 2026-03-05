@@ -1,4 +1,4 @@
-"""Integration tests for the Unravel Data Client."""
+"""Integration tests for the Aperiodic Data Client."""
 
 import os
 from datetime import date
@@ -6,7 +6,7 @@ from datetime import date
 import polars as pl
 import pytest
 
-from unravel_data_client import (
+from aperiodic_data_client import (
     APIError,
     get_l1_metrics,
     get_l2_metrics,
@@ -15,9 +15,9 @@ from unravel_data_client import (
     get_trade_metrics,
 )
 
-API_KEY = os.environ.get("UNRAVEL_API_KEY")
+API_KEY = os.environ.get("APERIODIC_API_KEY")
 requires_api_key = pytest.mark.skipif(
-    API_KEY is None, reason="UNRAVEL_API_KEY environment variable not set"
+    API_KEY is None, reason="APERIODIC_API_KEY environment variable not set"
 )
 
 # Shared defaults for all data fetch calls
@@ -172,26 +172,26 @@ class TestGetSymbols:
 
 class TestTypes:
     def test_timestamp_literal(self):
-        from unravel_data_client.types import TimestampType
+        from aperiodic_data_client.types import TimestampType
         valid_values: list[TimestampType] = ["exchange", "true"]
         assert len(valid_values) == 2
 
     def test_interval_literal(self):
-        from unravel_data_client.types import Interval
+        from aperiodic_data_client.types import Interval
         valid_values: list[Interval] = ["1m", "5m", "15m", "30m", "1h", "4h", "1d"]
         assert len(valid_values) == 7
 
     def test_exchange_literal(self):
-        from unravel_data_client.types import Exchange
+        from aperiodic_data_client.types import Exchange
         valid_values: list[Exchange] = ["binance-futures", "binance", "okx-perps"]
         assert len(valid_values) == 3
 
     def test_trade_metric_literal(self):
-        from unravel_data_client.types import TradeMetric
+        from aperiodic_data_client.types import TradeMetric
         valid_values: list[TradeMetric] = ["vtwap", "flow", "trade_size", "impact", "range", "updownticks"]
         assert len(valid_values) == 6
 
     def test_l1_metric_literal(self):
-        from unravel_data_client.types import L1Metric
+        from aperiodic_data_client.types import L1Metric
         valid_values: list[L1Metric] = ["l1_price", "l1_imbalance", "l1_liquidity"]
         assert len(valid_values) == 3

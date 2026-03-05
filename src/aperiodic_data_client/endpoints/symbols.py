@@ -18,7 +18,7 @@ async def get_symbols_async(
     for the given exchange.
 
     Args:
-        api_key: Your Unravel API key
+        api_key: Your Aperiodic API key
         exchange: Source exchange ('binance-futures', 'binance')
         bucket: Data bucket (default: 'ohlcv')
         base_url: API base URL (default: https://unravel.finance/api/v1)
@@ -30,7 +30,7 @@ async def get_symbols_async(
         APIError: If the API returns an error response
 
     Example:
-        >>> from unravel_data_client import get_symbols
+        >>> from aperiodic_data_client import get_symbols
         >>>
         >>> symbols = get_symbols(
         ...     api_key="your-api-key",

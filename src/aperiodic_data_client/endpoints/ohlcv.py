@@ -10,7 +10,7 @@ from ..types import Exchange, Interval, TimestampType
 from .utils import _get_files_from_bucket_async
 
 
-async def get_l2_metrics_async(
+async def get_ohlcv_async(
     api_key: str,
     timestamp: TimestampType,
     interval: Interval,
@@ -23,13 +23,12 @@ async def get_l2_metrics_async(
     max_concurrent: int = MAX_CONCURRENT_DOWNLOADS,
 ) -> pl.DataFrame:
     """
-    Fetch historical L2 order book metrics data.
-
-    Provides multi-depth order book imbalance metrics.
+    Fetch historical OHLCV (candlestick) data.
 
     Args:
-        api_key: Your Unravel API key
-        timestamp: Timestamp source - 'exchange' or 'true'
+        api_key: Your Aperiodic API key
+        timestamp: Timestamp source - 'exchange' for exchange-reported time,
+                   'true' for actual arrival time at Aperiodic servers
         interval: Aggregation interval ('1m', '5m', '15m', '30m', '1h', '4h', '1d')
         exchange: Source exchange ('binance-futures', 'binance', 'okx-perps')
         symbol: Trading pair symbol (e.g., 'btcusdt', 'ethusdt')
@@ -39,7 +38,7 @@ async def get_l2_metrics_async(
         max_concurrent: Maximum concurrent downloads (default: 10)
 
     Returns:
-        pl.DataFrame with L2 multi-depth order book imbalance columns
+        pl.DataFrame with open, high, low, close, volume columns
 
     Raises:
         APIError: If the API returns an error response
@@ -47,7 +46,7 @@ async def get_l2_metrics_async(
     """
     return await _get_files_from_bucket_async(
         api_key=api_key,
-        bucket="l2_imbalance",
+        bucket="ohlcv",
         timestamp=timestamp,
         interval=interval,
         exchange=exchange,
@@ -60,7 +59,7 @@ async def get_l2_metrics_async(
     )
 
 
-def get_l2_metrics(
+def get_ohlcv(
     api_key: str,
     timestamp: TimestampType,
     interval: Interval,
@@ -73,7 +72,7 @@ def get_l2_metrics(
     max_concurrent: int = MAX_CONCURRENT_DOWNLOADS,
 ) -> pl.DataFrame:
     return run_async(
-        get_l2_metrics_async(
+        get_ohlcv_async(
             api_key=api_key,
             timestamp=timestamp,
             interval=interval,

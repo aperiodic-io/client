@@ -1,1 +1,1 @@
-"""Tests for unravel-data-client."""
+"""Tests for aperiodic client."""

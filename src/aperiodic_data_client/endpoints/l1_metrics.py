@@ -32,7 +32,7 @@ async def get_l1_metrics_async(
         - 'l1_liquidity': Spread, depth, dollar depth metrics
 
     Args:
-        api_key: Your Unravel API key
+        api_key: Your Aperiodic API key
         metric: Which L1 metric to fetch
         timestamp: Timestamp source - 'exchange' or 'true'
         interval: Aggregation interval ('1m', '5m', '15m', '30m', '1h', '4h', '1d')

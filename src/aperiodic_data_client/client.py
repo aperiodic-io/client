@@ -42,11 +42,11 @@ def run_async(coro: Coroutine[None, None, T]) -> T:
     return loop.run_until_complete(coro)
 
 
-class UnravelDataError(Exception):
-    """Base exception for Unravel Data Client errors."""
+class AperiodicDataError(Exception):
+    """Base exception for Aperiodic Data Client errors."""
 
 
-class APIError(UnravelDataError):
+class APIError(AperiodicDataError):
     """Exception raised when the API returns an error."""
 
     def __init__(
@@ -58,7 +58,7 @@ class APIError(UnravelDataError):
         super().__init__(f"{status_code}: {message}")
 
 
-class DownloadError(UnravelDataError):
+class DownloadError(AperiodicDataError):
     """Exception raised when a file download fails after all retries."""
 
     def __init__(self, year: int, month: int, original_error: Exception):
