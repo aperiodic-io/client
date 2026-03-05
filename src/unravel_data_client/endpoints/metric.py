@@ -1,24 +1,18 @@
 from __future__ import annotations
 
 from datetime import date
-from typing import TYPE_CHECKING
 
 import polars as pl
 
-from ..client import (
-    run_async,
-)
+from ..client import run_async
 from ..config import DEFAULT_BASE_URL, MAX_CONCURRENT_DOWNLOADS
-from ..types import Exchange, Interval, MetricType, TimestampType
+from ..types import Exchange, Interval, TimestampType, TradeMetric
 from .utils import _get_files_from_bucket_async
 
-if TYPE_CHECKING:
-    pass
 
-
-async def get_metric_async(
+async def get_trade_metrics_async(
     api_key: str,
-    metric_type: MetricType,
+    metric: TradeMetric,
     timestamp: TimestampType,
     interval: Interval,
     exchange: Exchange,
@@ -30,18 +24,22 @@ async def get_metric_async(
     max_concurrent: int = MAX_CONCURRENT_DOWNLOADS,
 ) -> pl.DataFrame:
     """
-    Fetch historical Metric data.
+    Fetch historical trade metrics data.
 
-    Downloads metric data for a specific symbol and date range.
-    Files are downloaded in parallel with per-file retry logic for optimal
-    performance and reliability.
+    Available metrics:
+        - 'vtwap': Volume-weighted and time-weighted average prices
+        - 'flow': Taker buy/sell volume, count, ratios, size-segmented order flow
+        - 'trade_size': Size-segmented order volume/count and distribution statistics
+        - 'impact': Market impact metrics (Amihud, Kyle lambda, directional impact)
+        - 'range': Price high/low range and distribution statistics
+        - 'updownticks': Uptick and downtick count, volume, ratios and percentages
 
     Args:
         api_key: Your Unravel API key
-        timestamp: Timestamp source - 'exchange' for exchange-reported time,
-                     'true' for actual arrival time at Unravel servers
+        metric: Which trade metric to fetch
+        timestamp: Timestamp source - 'exchange' or 'true'
         interval: Aggregation interval ('1m', '5m', '15m', '30m', '1h', '4h', '1d')
-        exchange: Source exchange ('binance-futures', 'binance')
+        exchange: Source exchange ('binance-futures', 'binance', 'okx-perps')
         symbol: Trading pair symbol (e.g., 'btcusdt', 'ethusdt')
         start_date: Start date for the data range
         end_date: End date for the data range (inclusive)
@@ -49,22 +47,15 @@ async def get_metric_async(
         max_concurrent: Maximum concurrent downloads (default: 10)
 
     Returns:
-        pl.DataFrame: DataFrame with OHLCV data containing columns:
-            - timestamp: Unix timestamp in milliseconds
-            - datetime: Parsed datetime (added by client)
-            - open: Opening price
-            - high: Highest price
-            - low: Lowest price
-            - close: Closing price
-            - volume: Trading volume
+        pl.DataFrame with columns specific to the requested metric
 
     Raises:
         APIError: If the API returns an error response
         DownloadError: If a file download fails after all retries
-
     """
     return await _get_files_from_bucket_async(
         api_key=api_key,
+        bucket=metric,
         timestamp=timestamp,
         interval=interval,
         exchange=exchange,
@@ -77,9 +68,9 @@ async def get_metric_async(
     )
 
 
-def get_metric(
+def get_trade_metrics(
     api_key: str,
-    metric_type: MetricType,
+    metric: TradeMetric,
     timestamp: TimestampType,
     interval: Interval,
     exchange: Exchange,
@@ -91,8 +82,9 @@ def get_metric(
     max_concurrent: int = MAX_CONCURRENT_DOWNLOADS,
 ) -> pl.DataFrame:
     return run_async(
-        get_metric_async(
+        get_trade_metrics_async(
             api_key=api_key,
+            metric=metric,
             timestamp=timestamp,
             interval=interval,
             exchange=exchange,

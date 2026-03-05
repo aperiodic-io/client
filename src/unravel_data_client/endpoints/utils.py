@@ -14,7 +14,7 @@ from ..client import (
     handle_api_error,
 )
 from ..config import DEFAULT_BASE_URL, MAX_CONCURRENT_DOWNLOADS
-from ..types import AggregateDataResponse, Exchange, Interval, TimestampType
+from ..types import AggregateDataResponse, Interval, TimestampType
 
 if TYPE_CHECKING:
     pass
@@ -24,10 +24,9 @@ async def _fetch_presigned_urls(
     client: httpx.AsyncClient,
     api_key: str,
     bucket: str,
-    folder: str,
     timestamp: TimestampType,
     interval: Interval,
-    exchange: Exchange,
+    exchange: str,
     symbol: str,
     start_date: date,
     end_date: date,
@@ -54,10 +53,9 @@ async def _fetch_presigned_urls(
 async def _get_files_from_bucket_async(
     api_key: str,
     bucket: str,
-    folder: str,
     timestamp: TimestampType,
     interval: Interval,
-    exchange: Exchange,
+    exchange: str,
     symbol: str,
     start_date: date,
     end_date: date,
@@ -66,7 +64,7 @@ async def _get_files_from_bucket_async(
     max_concurrent: int = MAX_CONCURRENT_DOWNLOADS,
 ) -> pl.DataFrame:
     """
-    Async implementation of get_metric.
+    Async implementation for fetching data from any bucket.
 
     Fetches pre-signed URLs from the API, then downloads all parquet files
     in parallel with per-file retry logic and concatenates them into a single DataFrame.
@@ -76,7 +74,7 @@ async def _get_files_from_bucket_async(
         response = await _fetch_presigned_urls(
             client=client,
             api_key=api_key,
-            bucket="ohlcv",
+            bucket=bucket,
             timestamp=timestamp,
             interval=interval,
             exchange=exchange,
@@ -103,13 +101,12 @@ async def _get_files_from_bucket_async(
             for file_info in files
         ]
 
-        # Use tqdm for progress if requested
         if show_progress:
             results = []
             for coro in tqdm(
                 asyncio.as_completed(tasks),
                 total=len(tasks),
-                desc=f"Downloading {symbol} OHLCV",
+                desc=f"Downloading {symbol} {bucket}",
                 unit="file",
             ):
                 result = await coro
@@ -128,90 +125,16 @@ async def _get_files_from_bucket_async(
 
         # Filter to exact date range if timestamp column exists
         if "timestamp" in combined.columns:
-            # Add datetime column from timestamp (assuming milliseconds)
             combined = combined.with_columns(
                 pl.from_epoch("timestamp", time_unit="ms").alias("datetime")
             )
 
-            # Filter to exact date range
             start_dt = datetime.combine(start_date, datetime.min.time())
             end_dt = datetime.combine(end_date, datetime.max.time())
             combined = combined.filter(
                 (pl.col("datetime") >= start_dt) & (pl.col("datetime") <= end_dt)
             )
 
-            # Sort by timestamp
             combined = combined.sort("timestamp")
 
         return combined
-
-
-# def get_metric_multi(
-#     api_key: str,
-#     timestamp: TimestampType,
-#     interval: Interval,
-#     exchange: Exchange,
-#     symbols: Sequence[str],
-#     start_date: date,
-#     end_date: date,
-#     base_url: str = DEFAULT_BASE_URL,
-#     show_progress: bool = True,
-#     max_concurrent_symbols: int = 3,
-#     max_concurrent_downloads: int = MAX_CONCURRENT_DOWNLOADS,
-# ) -> dict[str, pl.DataFrame]:
-#     """
-#     Fetch historical OHLCV data for multiple symbols concurrently.
-
-#     Args:
-#         api_key: Your Unravel API key
-#         timestamp: Timestamp source
-#         interval: Aggregation interval
-#         exchange: Source exchange
-#         symbols: List of trading pair symbols
-#         start_date: Start date for the data range
-#         end_date: End date for the data range (inclusive)
-#         base_url: API base URL
-#         show_progress: Whether to show download progress bar
-#         max_concurrent_symbols: Maximum symbols to fetch concurrently (default: 3)
-#         max_concurrent_downloads: Maximum concurrent downloads per symbol (default: 10)
-
-#     Returns:
-#         dict[str, pl.DataFrame]: Dictionary mapping symbol to its DataFrame
-
-#     Example:
-#         >>> df_dict = get_metric_multi(
-#         ...     api_key="your-api-key",
-#         ...     timestamp="true",
-#         ...     interval="1h",
-#         ...     exchange="binance-futures",
-#         ...     symbols=["btcusdt", "ethusdt", "solusdt"],
-#         ...     start_date=date(2024, 1, 1),
-#         ...     end_date=date(2024, 1, 31),
-#         ... )
-#         >>> btc_df = df_dict["btcusdt"]
-#     """
-
-#     async def fetch_all():
-#         semaphore = asyncio.Semaphore(max_concurrent_symbols)
-
-#         async def fetch_with_semaphore(symbol: str) -> tuple[str, pl.DataFrame]:
-#             async with semaphore:
-#                 df = await get_metric_async(
-#                     api_key=api_key,
-#                     timestamp=timestamp,
-#                     interval=interval,
-#                     exchange=exchange,
-#                     symbol=symbol,
-#                     start_date=start_date,
-#                     end_date=end_date,
-#                     base_url=base_url,
-#                     show_progress=show_progress,
-#                     max_concurrent=max_concurrent_downloads,
-#                 )
-#                 return symbol, df
-
-#         tasks = [fetch_with_semaphore(symbol) for symbol in symbols]
-#         results = await asyncio.gather(*tasks)
-#         return dict(results)
-
-#     return run_async(fetch_all())

@@ -6,12 +6,13 @@ import polars as pl
 
 from ..client import run_async
 from ..config import DEFAULT_BASE_URL, MAX_CONCURRENT_DOWNLOADS
-from ..types import Exchange, Interval, TimestampType
+from ..types import Exchange, Interval, L1Metric, TimestampType
 from .utils import _get_files_from_bucket_async
 
 
-async def get_ohlcv_async(
+async def get_l1_metrics_async(
     api_key: str,
+    metric: L1Metric,
     timestamp: TimestampType,
     interval: Interval,
     exchange: Exchange,
@@ -23,12 +24,17 @@ async def get_ohlcv_async(
     max_concurrent: int = MAX_CONCURRENT_DOWNLOADS,
 ) -> pl.DataFrame:
     """
-    Fetch historical OHLCV (candlestick) data.
+    Fetch historical L1 order book metrics data.
+
+    Available metrics:
+        - 'l1_price': Top-of-book ask/bid prices, midprice, TWAP/VWAP
+        - 'l1_imbalance': Bid/ask imbalance, ratio, percentages
+        - 'l1_liquidity': Spread, depth, dollar depth metrics
 
     Args:
         api_key: Your Unravel API key
-        timestamp: Timestamp source - 'exchange' for exchange-reported time,
-                   'true' for actual arrival time at Unravel servers
+        metric: Which L1 metric to fetch
+        timestamp: Timestamp source - 'exchange' or 'true'
         interval: Aggregation interval ('1m', '5m', '15m', '30m', '1h', '4h', '1d')
         exchange: Source exchange ('binance-futures', 'binance', 'okx-perps')
         symbol: Trading pair symbol (e.g., 'btcusdt', 'ethusdt')
@@ -38,7 +44,7 @@ async def get_ohlcv_async(
         max_concurrent: Maximum concurrent downloads (default: 10)
 
     Returns:
-        pl.DataFrame with open, high, low, close, volume columns
+        pl.DataFrame with columns specific to the requested metric
 
     Raises:
         APIError: If the API returns an error response
@@ -46,7 +52,7 @@ async def get_ohlcv_async(
     """
     return await _get_files_from_bucket_async(
         api_key=api_key,
-        bucket="ohlcv",
+        bucket=metric,
         timestamp=timestamp,
         interval=interval,
         exchange=exchange,
@@ -59,8 +65,9 @@ async def get_ohlcv_async(
     )
 
 
-def get_ohlcv(
+def get_l1_metrics(
     api_key: str,
+    metric: L1Metric,
     timestamp: TimestampType,
     interval: Interval,
     exchange: Exchange,
@@ -72,8 +79,9 @@ def get_ohlcv(
     max_concurrent: int = MAX_CONCURRENT_DOWNLOADS,
 ) -> pl.DataFrame:
     return run_async(
-        get_ohlcv_async(
+        get_l1_metrics_async(
             api_key=api_key,
+            metric=metric,
             timestamp=timestamp,
             interval=interval,
             exchange=exchange,
