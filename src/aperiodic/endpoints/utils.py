@@ -13,7 +13,7 @@ from ..client import (
     get_http_client,
     handle_api_error,
 )
-from ..config import DEFAULT_BASE_URL, MAX_CONCURRENT_DOWNLOADS
+from ..config import DEFAULT_BASE_URL, MAX_CONCURRENT_DOWNLOADS, TIMESTAMP_COL
 from ..types import AggregateDataResponse, Interval, TimestampType
 
 if TYPE_CHECKING:
@@ -35,7 +35,7 @@ async def _fetch_presigned_urls(
     """Fetch pre-signed URLs for all files in the date range."""
     url = f"{base_url}/data/{bucket}"
     params = {
-        "timestamp": timestamp,
+        TIMESTAMP_COL: timestamp,
         "interval": interval,
         "exchange": exchange,
         "symbol": symbol,
@@ -124,9 +124,9 @@ async def _get_files_from_bucket_async(
         combined = pl.concat(dataframes)
 
         # Filter to exact date range if timestamp column exists
-        if "timestamp" in combined.columns:
+        if TIMESTAMP_COL in combined.columns:
             combined = combined.with_columns(
-                pl.from_epoch("timestamp", time_unit="ms").alias("datetime")
+                pl.from_epoch(TIMESTAMP_COL, time_unit="ms").alias("datetime")
             )
 
             start_dt = datetime.combine(start_date, datetime.min.time())
@@ -135,6 +135,6 @@ async def _get_files_from_bucket_async(
                 (pl.col("datetime") >= start_dt) & (pl.col("datetime") <= end_dt)
             )
 
-            combined = combined.sort("timestamp")
+            combined = combined.sort(TIMESTAMP_COL)
 
         return combined

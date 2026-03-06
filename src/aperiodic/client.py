@@ -128,6 +128,26 @@ async def download_parquet_with_retry(
 
 
 async def handle_api_error(response: httpx.Response) -> None:
+    if response.status_code == 401:
+        raise APIError(
+            message="Unauthorized",
+            status_code=response.status_code,
+        )
+    if response.status_code == 403:
+        raise APIError(
+            message="Forbidden",
+            status_code=response.status_code,
+        )
+    if response.status_code == 404:
+        raise APIError(
+            message="Not Found",
+            status_code=response.status_code,
+        )
+    if response.status_code == 429:
+        raise APIError(
+            message="Too Many Requests",
+            status_code=response.status_code,
+        )
     if response.status_code != 200:
         try:
             error_data = response.json()

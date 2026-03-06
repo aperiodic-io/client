@@ -30,7 +30,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 
 [tool.hatch.version]
-path = "src/aperiodic_data_client/__init__.py"
+path = "src/aperiodic/__init__.py"
 
 [project.urls]
 Issues = "https://github.com/aperiodic-io/aperiodic-client/issues"
@@ -70,7 +70,7 @@ dependencies = ["aperiodic[tests]"]
 run = "pytest tests/ --durations 0 -s"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/aperiodic_data_client"]
+packages = ["src/aperiodic"]
 
 [tool.hatch.build.targets.sdist]
 exclude = [

@@ -8,7 +8,6 @@ from ..types import Exchange, SymbolsResponse
 async def get_symbols_async(
     api_key: str,
     exchange: Exchange,
-    bucket: str = "ohlcv",
     base_url: str = DEFAULT_BASE_URL,
 ) -> list[str]:
     """
@@ -31,7 +30,7 @@ async def get_symbols_async(
         APIError: If the API returns an error response
 
     Example:
-        >>> from aperiodic_data_client import get_symbols
+        >>> from aperiodic import get_symbols
         >>>
         >>> symbols = get_symbols(
         ...     api_key="your-api-key",
@@ -41,10 +40,9 @@ async def get_symbols_async(
         >>> print(symbols[:10])  # First 10 symbols
     """
     async with get_http_client(timeout=30.0) as client:
-        url = f"{base_url}/data/symbols"
+        url = f"{base_url}/metadata/symbols"
         params = {
             "exchange": exchange,
-            "bucket": bucket,
         }
         headers = {"X-API-KEY": api_key}
 
@@ -58,14 +56,12 @@ async def get_symbols_async(
 def get_symbols(
     api_key: str,
     exchange: Exchange,
-    bucket: str = "ohlcv",
     base_url: str = DEFAULT_BASE_URL,
 ) -> list[str]:
     return run_async(
         get_symbols_async(
             api_key=api_key,
             exchange=exchange,
-            bucket=bucket,
             base_url=base_url,
         )
     )

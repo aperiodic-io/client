@@ -20,20 +20,13 @@ pip install -e .
 
 All symbol identifiers follow the **[Atlas unified symbology](https://github.com/aperiodic-io/atlas)** — a standardised, exchange-agnostic naming scheme. Use Atlas to look up or convert symbol names before passing them to any function in this client.
 
-```python
-# Atlas symbols are lowercase and exchange-normalised, e.g.:
-#   btcusdt   – BTC/USDT perpetual on Binance Futures
-#   ethusdt   – ETH/USDT perpetual
-#   1000bttcusdt – symbols with numeric prefixes are supported
-```
-
 Refer to the [Atlas repository](https://github.com/aperiodic-io/atlas) for the full symbol catalogue and conversion utilities.
 
 ## Quick Start
 
 ```python
 from datetime import date
-from aperiodic_data_client import get_metric
+from aperiodic import get_metric
 
 # Fetch hourly OHLCV data for BTC
 df = get_metric(
@@ -41,7 +34,7 @@ df = get_metric(
     timestamp="true",
     interval="1h",
     exchange="binance-futures",
-    symbol="btcusdt",
+    symbol="perpetual-BTC-USDT:USDT",
     start_date=date(2024, 1, 1),
     end_date=date(2024, 3, 31),
 )
@@ -87,7 +80,7 @@ def get_metric(
 | `timestamp` | `"exchange"` \| `"true"` | Timestamp source - `"exchange"` for exchange-reported time, `"true"` for actual arrival time |
 | `interval` | `str` | Aggregation interval (`"1m"`, `"5m"`, `"15m"`, `"30m"`, `"1h"`, `"4h"`, `"1d"`) |
 | `exchange` | `str` | Source exchange (`"binance-futures"`, `"binance"`) |
-| `symbol` | `str` | Trading pair symbol in [Atlas unified symbology](https://github.com/aperiodic-io/atlas) (e.g., `"btcusdt"`, `"ethusdt"`) |
+| `symbol` | `str` | Trading pair symbol in [Atlas unified symbology](https://github.com/aperiodic-io/atlas) (e.g., `"perpetual-BTC-USDT:USDT"`) |
 | `start_date` | `date` | Start date for the data range |
 | `end_date` | `date` | End date for the data range (inclusive) |
 | `base_url` | `str` | API base URL (optional) |
@@ -111,7 +104,7 @@ Async version of `get_metric`. Use this when you're already in an async context.
 
 ```python
 import asyncio
-from aperiodic_data_client import get_metric_async
+from aperiodic import get_metric_async
 
 async def main():
     df = await get_metric_async(
@@ -133,7 +126,7 @@ df = asyncio.run(main())
 Get the list of available symbols for an exchange.
 
 ```python
-from aperiodic_data_client import get_symbols
+from aperiodic import get_symbols
 
 symbols = get_symbols(
     api_key="your-api-key",
@@ -157,31 +150,11 @@ print(symbols[:10])  # First 10 symbols
 
 `list[str]` - List of available symbol names (lowercase)
 
-### `get_metric_multi`
-
-Fetch data for multiple symbols concurrently.
-
-```python
-from aperiodic_data_client import get_metric_multi
-
-df_dict = get_metric_multi(
-    api_key="your-api-key",
-    timestamp="true",
-    interval="1h",
-    exchange="binance-futures",
-    symbols=["btcusdt", "ethusdt", "solusdt"],
-    start_date=date(2024, 1, 1),
-    end_date=date(2024, 1, 31),
-)
-
-btc_df = df_dict["btcusdt"]
-eth_df = df_dict["ethusdt"]
-```
 
 ## Error Handling
 
 ```python
-from aperiodic_data_client import get_metric, APIError, DownloadError
+from aperiodic import get_metric, APIError, DownloadError
 
 try:
     df = get_metric(...)
@@ -208,7 +181,7 @@ The client handles all the complexity of fetching multiple monthly files and com
 The client is organized into modules for different data types:
 
 ```
-aperiodic_data_client/
+aperiodic/
 ├── ohlcv/              # OHLCV candlestick data
 │   └── historical.py   # Historical data retrieval
 ├── general/            # General utilities
@@ -222,11 +195,11 @@ You can import directly from the package or from submodules:
 
 ```python
 # Direct import (recommended)
-from aperiodic_data_client import get_metric, get_symbols
+from aperiodic import get_metric, get_symbols
 
 # Or import from submodules
-from aperiodic_data_client.ohlcv import get_metric
-from aperiodic_data_client.general import get_symbols
+from aperiodic.ohlcv import get_metric
+from aperiodic.general import get_symbols
 ```
 
 ## Requirements

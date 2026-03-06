@@ -6,12 +6,13 @@ import polars as pl
 
 from ..client import run_async
 from ..config import DEFAULT_BASE_URL, MAX_CONCURRENT_DOWNLOADS
-from ..types import Exchange, Interval, TimestampType
+from ..types import Exchange, Interval, L2Metric, TimestampType
 from .utils import _get_files_from_bucket_async
 
 
 async def get_l2_metrics_async(
     api_key: str,
+    metric: L2Metric,
     timestamp: TimestampType,
     interval: Interval,
     exchange: Exchange,
@@ -48,7 +49,7 @@ async def get_l2_metrics_async(
     """
     return await _get_files_from_bucket_async(
         api_key=api_key,
-        bucket="l2_imbalance",
+        bucket=metric,
         timestamp=timestamp,
         interval=interval,
         exchange=exchange,
@@ -63,6 +64,7 @@ async def get_l2_metrics_async(
 
 def get_l2_metrics(
     api_key: str,
+    metric: L2Metric,
     timestamp: TimestampType,
     interval: Interval,
     exchange: Exchange,
@@ -76,6 +78,7 @@ def get_l2_metrics(
     return run_async(
         get_l2_metrics_async(
             api_key=api_key,
+            metric=metric,
             timestamp=timestamp,
             interval=interval,
             exchange=exchange,
