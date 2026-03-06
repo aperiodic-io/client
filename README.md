@@ -20,13 +20,6 @@ pip install -e .
 
 All symbol identifiers follow the **[Atlas unified symbology](https://github.com/aperiodic-io/atlas)** — a standardised, exchange-agnostic naming scheme. Use Atlas to look up or convert symbol names before passing them to any function in this client.
 
-```python
-# Atlas symbols are lowercase and exchange-normalised, e.g.:
-#   btcusdt   – BTC/USDT perpetual on Binance Futures
-#   ethusdt   – ETH/USDT perpetual
-#   1000bttcusdt – symbols with numeric prefixes are supported
-```
-
 Refer to the [Atlas repository](https://github.com/aperiodic-io/atlas) for the full symbol catalogue and conversion utilities.
 
 ## Quick Start
@@ -41,7 +34,7 @@ df = get_metric(
     timestamp="true",
     interval="1h",
     exchange="binance-futures",
-    symbol="btcusdt",
+    symbol="perpetual-BTC-USDT:USDT",
     start_date=date(2024, 1, 1),
     end_date=date(2024, 3, 31),
 )
@@ -87,7 +80,7 @@ def get_metric(
 | `timestamp` | `"exchange"` \| `"true"` | Timestamp source - `"exchange"` for exchange-reported time, `"true"` for actual arrival time |
 | `interval` | `str` | Aggregation interval (`"1m"`, `"5m"`, `"15m"`, `"30m"`, `"1h"`, `"4h"`, `"1d"`) |
 | `exchange` | `str` | Source exchange (`"binance-futures"`, `"binance"`) |
-| `symbol` | `str` | Trading pair symbol in [Atlas unified symbology](https://github.com/aperiodic-io/atlas) (e.g., `"btcusdt"`, `"ethusdt"`) |
+| `symbol` | `str` | Trading pair symbol in [Atlas unified symbology](https://github.com/aperiodic-io/atlas) (e.g., `"perpetual-BTC-USDT:USDT"`) |
 | `start_date` | `date` | Start date for the data range |
 | `end_date` | `date` | End date for the data range (inclusive) |
 | `base_url` | `str` | API base URL (optional) |
@@ -157,26 +150,6 @@ print(symbols[:10])  # First 10 symbols
 
 `list[str]` - List of available symbol names (lowercase)
 
-### `get_metric_multi`
-
-Fetch data for multiple symbols concurrently.
-
-```python
-from aperiodic_data_client import get_metric_multi
-
-df_dict = get_metric_multi(
-    api_key="your-api-key",
-    timestamp="true",
-    interval="1h",
-    exchange="binance-futures",
-    symbols=["btcusdt", "ethusdt", "solusdt"],
-    start_date=date(2024, 1, 1),
-    end_date=date(2024, 1, 31),
-)
-
-btc_df = df_dict["btcusdt"]
-eth_df = df_dict["ethusdt"]
-```
 
 ## Error Handling
 

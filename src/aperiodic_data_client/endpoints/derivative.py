@@ -6,13 +6,13 @@ import polars as pl
 
 from ..client import run_async
 from ..config import DEFAULT_BASE_URL, MAX_CONCURRENT_DOWNLOADS
-from ..types import Exchange, Interval, L1Metric, TimestampType
+from ..types import DerivativeMetric, Exchange, Interval, TimestampType, TradeMetric
 from .utils import _get_files_from_bucket_async
 
 
-async def get_l1_metrics_async(
+async def get_derivative_metrics_async(
     api_key: str,
-    metric: L1Metric,
+    metric: DerivativeMetric,
     timestamp: TimestampType,
     interval: Interval,
     exchange: Exchange,
@@ -24,20 +24,24 @@ async def get_l1_metrics_async(
     max_concurrent: int = MAX_CONCURRENT_DOWNLOADS,
 ) -> pl.DataFrame:
     """
-    Fetch historical L1 order book metrics data.
+    Fetch historical trade metrics data.
 
     Available metrics:
-        - 'l1_price': Top-of-book ask/bid prices, midprice, TWAP/VWAP
-        - 'l1_imbalance': Bid/ask imbalance, ratio, percentages
-        - 'l1_liquidity': Spread, depth, dollar depth metrics
+        - 'vtwap': Volume-weighted and time-weighted average prices
+        - 'flow': Taker buy/sell volume, count, ratios, size-segmented order flow
+        - 'trade_size': Size-segmented order volume/count and distribution statistics
+        - 'impact': Market impact metrics (Amihud, Kyle lambda, directional impact)
+        - 'range': Price high/low range and distribution statistics
+        - 'updownticks': Uptick and downtick count, volume, ratios and percentages
 
     Args:
         api_key: Your Aperiodic API key
-        metric: Which L1 metric to fetch
+        metric: Which trade metric to fetch
         timestamp: Timestamp source - 'exchange' or 'true'
         interval: Aggregation interval ('1m', '5m', '15m', '30m', '1h', '4h', '1d')
         exchange: Source exchange ('binance-futures')
-        symbol: Trading pair symbol (e.g., 'btcusdt', 'ethusdt')
+        symbol: Trading pair symbol in Atlas unified symbology
+                (https://github.com/aperiodic-io/atlas), e.g. 'btcusdt', 'ethusdt'
         start_date: Start date for the data range
         end_date: End date for the data range (inclusive)
         show_progress: Whether to show download progress bar (default: True)
@@ -65,9 +69,9 @@ async def get_l1_metrics_async(
     )
 
 
-def get_l1_metrics(
+def get_derivative_metrics(
     api_key: str,
-    metric: L1Metric,
+    metric: TradeMetric,
     timestamp: TimestampType,
     interval: Interval,
     exchange: Exchange,
@@ -79,7 +83,7 @@ def get_l1_metrics(
     max_concurrent: int = MAX_CONCURRENT_DOWNLOADS,
 ) -> pl.DataFrame:
     return run_async(
-        get_l1_metrics_async(
+        get_derivative_metrics_async(
             api_key=api_key,
             metric=metric,
             timestamp=timestamp,

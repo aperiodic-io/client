@@ -22,11 +22,13 @@ DerivativesExchange = Literal[
     "okex-swap",
 ]
 
-# Trade metrics dataset identifiers (map to the trade-metrics R2 bucket)
 TradeMetric = Literal["vtwap", "flow", "trade_size", "impact", "range", "updownticks"]
 
-# L1 metrics dataset identifiers (map to the l1-metrics R2 bucket)
 L1Metric = Literal["l1_price", "l1_imbalance", "l1_liquidity"]
+L2Metric = Literal["l2_imbalance", "l2_liquidity"]
+
+DerivativeMetric = Literal["basis", "funding", "open_interest"]
+
 
 
 class FileInfo(TypedDict):

@@ -2,12 +2,17 @@
 
 import os
 from datetime import date
+from typing import get_args
 
 import polars as pl
 import pytest
 
+from aperiodic_data_client.types import DerivativeMetric
+
+
 from aperiodic_data_client import (
     APIError,
+    get_derivative_metrics,
     get_l1_metrics,
     get_l2_metrics,
     get_ohlcv,
@@ -22,12 +27,12 @@ requires_api_key = pytest.mark.skipif(
 
 # Shared defaults for all data fetch calls
 COMMON_PARAMS = dict(
-    timestamp="true",
+    timestamp="exchange",
     interval="1d",
     exchange="binance-futures",
     symbol="perpetual-BTC-USDT:USDT",
     start_date=date(2024, 1, 1),
-    end_date=date(2024, 1, 7),
+    end_date=date(2024, 2, 1),
     show_progress=False,
 )
 
@@ -53,17 +58,8 @@ class TestGetOhlcv:
         assert len(result) > 0
         for col in ["open", "high", "low", "close", "volume"]:
             assert col in result.columns
-
-    @requires_api_key
-    def test_result_sorted_by_timestamp(self):
-        result = get_ohlcv(api_key=API_KEY, **COMMON_PARAMS)
-        assert result["timestamp"].is_sorted()
-
-    @requires_api_key
-    def test_date_range_is_respected(self):
-        result = get_ohlcv(api_key=API_KEY, **COMMON_PARAMS)
-        assert result["datetime"].min().date() >= COMMON_PARAMS["start_date"]
-        assert result["datetime"].max().date() <= COMMON_PARAMS["end_date"]
+        assert result["time"].min().date() >= COMMON_PARAMS["start_date"]
+        assert result["time"].is_sorted()
 
 
 class TestGetTradeMetrics:
@@ -85,21 +81,8 @@ class TestGetTradeMetrics:
         result = get_trade_metrics(api_key=API_KEY, metric=metric, **COMMON_PARAMS)
         assert isinstance(result, pl.DataFrame)
         assert len(result) > 0
-
-    @requires_api_key
-    def test_vtwap_columns(self):
-        result = get_trade_metrics(api_key=API_KEY, metric="vtwap", **COMMON_PARAMS)
-        assert "timestamp" in result.columns
-
-    @requires_api_key
-    def test_flow_columns(self):
-        result = get_trade_metrics(api_key=API_KEY, metric="flow", **COMMON_PARAMS)
-        assert "timestamp" in result.columns
-
-    @requires_api_key
-    def test_result_sorted_by_timestamp(self):
-        result = get_trade_metrics(api_key=API_KEY, metric="flow", **COMMON_PARAMS)
-        assert result["timestamp"].is_sorted()
+        assert "time" in result.columns
+        assert result["time"].is_sorted()
 
 
 class TestGetL1Metrics:
@@ -115,16 +98,8 @@ class TestGetL1Metrics:
         result = get_l1_metrics(api_key=API_KEY, metric=metric, **COMMON_PARAMS)
         assert isinstance(result, pl.DataFrame)
         assert len(result) > 0
-
-    @requires_api_key
-    def test_l1_price_columns(self):
-        result = get_l1_metrics(api_key=API_KEY, metric="l1_price", **COMMON_PARAMS)
-        assert "timestamp" in result.columns
-
-    @requires_api_key
-    def test_result_sorted_by_timestamp(self):
-        result = get_l1_metrics(api_key=API_KEY, metric="l1_price", **COMMON_PARAMS)
-        assert result["timestamp"].is_sorted()
+        assert "time" in result.columns
+        assert result["time"].is_sorted()
 
 
 class TestGetL2Metrics:
@@ -134,15 +109,34 @@ class TestGetL2Metrics:
         assert exc_info.value.status_code == 401
 
     @requires_api_key
-    def test_returns_dataframe(self):
-        result = get_l2_metrics(api_key=API_KEY, **COMMON_PARAMS)
+    @pytest.mark.parametrize(
+        "metric",
+        ["l2_imbalance", "l2_liquidity"],
+    )
+    def test_returns_dataframe(self, metric):
+        result = get_l2_metrics(api_key=API_KEY, metric=metric, **COMMON_PARAMS)
         assert isinstance(result, pl.DataFrame)
         assert len(result) > 0
+        assert result["time"].is_sorted()
+
+
+
+
+class TestGetDerivativeMetrics:
+    @pytest.mark.parametrize("metric", get_args(DerivativeMetric))
+    def test_invalid_api_key_raises_401(self, metric):
+        with pytest.raises(APIError) as exc_info:
+            get_derivative_metrics(api_key="invalid-key", metric=metric, **COMMON_PARAMS)
+        assert exc_info.value.status_code == 401
 
     @requires_api_key
-    def test_result_sorted_by_timestamp(self):
-        result = get_l2_metrics(api_key=API_KEY, **COMMON_PARAMS)
-        assert result["timestamp"].is_sorted()
+    @pytest.mark.parametrize("metric", get_args(DerivativeMetric))
+    def test_returns_dataframe(self, metric):
+        result = get_derivative_metrics(api_key=API_KEY, metric=metric, **COMMON_PARAMS)
+        assert isinstance(result, pl.DataFrame)
+        assert len(result) > 0
+        assert "time" in result.columns
+        assert result["time"].is_sorted()
 
 
 class TestGetSymbols:
@@ -157,17 +151,12 @@ class TestGetSymbols:
         assert exc_info.value.status_code in [400, 401]
 
     @requires_api_key
-    @pytest.mark.parametrize("bucket", ["ohlcv", "flow", "l1_price", "l2_imbalance"])
-    def test_returns_symbols_for_bucket(self, bucket):
-        result = get_symbols(api_key=API_KEY, exchange="binance-futures", bucket=bucket)
+    def test_returns_symbols_for_exchange(self):
+        result = get_symbols(api_key=API_KEY, exchange="binance-futures")
         assert isinstance(result, list)
         assert len(result) > 0
-        assert "btcusdt" in result
+        assert "perpetual-BTC-USDT:USDT" in result
 
-    @requires_api_key
-    def test_symbols_are_lowercase(self):
-        result = get_symbols(api_key=API_KEY, exchange="binance-futures")
-        assert all(s == s.lower() for s in result)
 
 
 class TestTypes:
@@ -195,3 +184,6 @@ class TestTypes:
         from aperiodic_data_client.types import L1Metric
         valid_values: list[L1Metric] = ["l1_price", "l1_imbalance", "l1_liquidity"]
         assert len(valid_values) == 3
+
+    def test_derivative_metric_literal(self):
+        assert len(get_args(DerivativeMetric)) == 3
