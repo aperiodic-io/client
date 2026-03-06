@@ -22,7 +22,7 @@ DerivativesExchange = Literal[
     "okex-swap",
 ]
 
-TradeMetric = Literal["vtwap", "flow", "trade_size", "impact", "range", "updownticks"]
+TradeMetric = Literal["vtwap", "flow", "trade_size", "impact", "range", "updownticks", "run_structure", "returns", "slippage"]
 
 L1Metric = Literal["l1_price", "l1_imbalance", "l1_liquidity"]
 L2Metric = Literal["l2_imbalance", "l2_liquidity"]
