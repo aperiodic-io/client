@@ -3,10 +3,10 @@ build-backend = "hatchling.build"
 requires = ["hatchling"]
 
 [project]
-name = "unravel-data-client"
+name = "aperiodic"
 version = "0.1.0"
 authors = [
-  { name="Unravel Team", email="info@unravel.finance" },
+  { name="Aperiodic Team", email="info@aperiodic.io" },
 ]
 classifiers = [
   "Development Status :: 4 - Beta",
@@ -19,21 +19,22 @@ classifiers = [
 ]
 dependencies = [
   "httpx>=0.25.0",
+  "nest-asyncio>=1.5.0",
   "polars>=1.0.0",
   "tqdm>=4.66.0",
 ]
-description = "Client library for Unravel aggregate market data API - OHLCV and more"
+description = "Client library for Aperiodic aggregate market data API - OHLCV and more"
 keywords = ["quant", "api", "ohlcv", "market-data", "crypto", "parquet", "polars"]
 license = "MIT"
 readme = "README.md"
 requires-python = ">=3.11"
 
 [tool.hatch.version]
-path = "src/unravel_data_client/__init__.py"
+path = "src/aperiodic_data_client/__init__.py"
 
 [project.urls]
-Issues = "https://github.com/unravel-finance/unravel-data-client/issues"
-Source = "https://github.com/unravel-finance/unravel-data-client"
+Issues = "https://github.com/aperiodic-io/aperiodic-client/issues"
+Source = "https://github.com/aperiodic-io/aperiodic-client"
 
 [project.optional-dependencies]
 quality = [
@@ -50,7 +51,7 @@ tests = [
 
 [tool.hatch.envs.quality]
 dependencies = [
-  "unravel-data-client[quality]"
+  "aperiodic[quality]"
 ]
 detached = true
 
@@ -63,13 +64,13 @@ format = [
 ]
 
 [tool.hatch.envs.test]
-dependencies = ["unravel-data-client[tests]"]
+dependencies = ["aperiodic[tests]"]
 
 [tool.hatch.envs.test.scripts]
 run = "pytest tests/ --durations 0 -s"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/unravel_data_client"]
+packages = ["src/aperiodic_data_client"]
 
 [tool.hatch.build.targets.sdist]
 exclude = [
