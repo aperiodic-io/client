@@ -5,6 +5,8 @@ requires = ["hatchling"]
 [project]
 name = "aperiodic"
 version = "0.1.0"
+version_pattern = "MAJOR.MINOR.PATCH"
+
 authors = [
   { name="Aperiodic Team", email="info@aperiodic.io" },
 ]
