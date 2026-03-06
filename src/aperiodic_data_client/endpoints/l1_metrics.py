@@ -36,8 +36,9 @@ async def get_l1_metrics_async(
         metric: Which L1 metric to fetch
         timestamp: Timestamp source - 'exchange' or 'true'
         interval: Aggregation interval ('1m', '5m', '15m', '30m', '1h', '4h', '1d')
-        exchange: Source exchange ('binance-futures', 'binance', 'okx-perps')
-        symbol: Trading pair symbol (e.g., 'btcusdt', 'ethusdt')
+        exchange: Source exchange ('binance-futures')
+        symbol: Trading pair symbol in Atlas unified symbology
+                (https://github.com/aperiodic-io/atlas), e.g. 'btcusdt', 'ethusdt'
         start_date: Start date for the data range
         end_date: End date for the data range (inclusive)
         show_progress: Whether to show download progress bar (default: True)

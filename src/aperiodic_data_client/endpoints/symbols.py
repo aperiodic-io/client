@@ -21,10 +21,11 @@ async def get_symbols_async(
         api_key: Your Aperiodic API key
         exchange: Source exchange ('binance-futures', 'binance')
         bucket: Data bucket (default: 'ohlcv')
-        base_url: API base URL (default: https://unravel.finance/api/v1)
+        base_url: API base URL (default: https://aperiodic.io/api/v1)
 
     Returns:
-        list[str]: List of available symbol names (lowercase)
+        list[str]: List of available symbol names in Atlas unified symbology
+                   (https://github.com/aperiodic-io/atlas), lowercase
 
     Raises:
         APIError: If the API returns an error response

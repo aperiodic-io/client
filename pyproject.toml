@@ -6,7 +6,7 @@ requires = ["hatchling"]
 name = "aperiodic"
 version = "0.1.0"
 authors = [
-  { name="Aperiodic Team", email="info@unravel.finance" },
+  { name="Aperiodic Team", email="info@aperiodic.io" },
 ]
 classifiers = [
   "Development Status :: 4 - Beta",
