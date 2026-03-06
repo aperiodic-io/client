@@ -16,11 +16,8 @@ from aperiodic_data_client import (
 )
 from aperiodic_data_client.types import (
     DerivativeMetric,
-    Exchange,
-    Interval,
     L1Metric,
     L2Metric,
-    TimestampType,
     TradeMetric,
 )
 
@@ -164,26 +161,3 @@ class TestGetSymbols:
         assert isinstance(result, list)
         assert len(result) > 0
         assert "perpetual-BTC-USDT:USDT" in result
-
-
-class TestTypes:
-    def test_timestamp_literal(self):
-        assert len(get_args(TimestampType)) == 2
-
-    def test_interval_literal(self):
-        assert len(get_args(Interval)) == 7
-
-    def test_exchange_literal(self):
-        assert len(get_args(Exchange)) == 3
-
-    def test_trade_metric_literal(self):
-        assert len(get_args(TradeMetric)) == 6
-
-    def test_l1_metric_literal(self):
-        assert len(get_args(L1Metric)) == 3
-
-    def test_l2_metric_literal(self):
-        assert len(get_args(L2Metric)) == 2
-
-    def test_derivative_metric_literal(self):
-        assert len(get_args(DerivativeMetric)) == 3

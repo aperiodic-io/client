@@ -24,7 +24,7 @@ TradeMetric = Literal[
 L1Metric = Literal["l1_price", "l1_imbalance", "l1_liquidity"]
 L2Metric = Literal["l2_imbalance", "l2_liquidity"]
 
-DerivativeMetric = Literal["basis", "funding", "open_interest"]
+DerivativeMetric = Literal["basis", "funding", "open_interest", "derivative_price"]
 
 
 class FileInfo(TypedDict):
