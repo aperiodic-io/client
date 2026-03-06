@@ -30,7 +30,7 @@ async def get_symbols_async(
         APIError: If the API returns an error response
 
     Example:
-        >>> from aperiodic_data_client import get_symbols
+        >>> from aperiodic import get_symbols
         >>>
         >>> symbols = get_symbols(
         ...     api_key="your-api-key",

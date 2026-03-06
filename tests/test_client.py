@@ -5,7 +5,7 @@ from typing import get_args
 import polars as pl
 import pytest
 
-from aperiodic_data_client import (
+from aperiodic import (
     APIError,
     get_derivative_metrics,
     get_l1_metrics,
@@ -14,7 +14,7 @@ from aperiodic_data_client import (
     get_symbols,
     get_trade_metrics,
 )
-from aperiodic_data_client.types import (
+from aperiodic.types import (
     DerivativeMetric,
     L1Metric,
     L2Metric,
