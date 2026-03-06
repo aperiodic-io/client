@@ -6,7 +6,7 @@ import polars as pl
 
 from ..client import run_async
 from ..config import DEFAULT_BASE_URL, MAX_CONCURRENT_DOWNLOADS
-from ..types import Exchange, Interval, TimestampType, L2Metric
+from ..types import Exchange, Interval, L2Metric, TimestampType
 from .utils import _get_files_from_bucket_async
 
 

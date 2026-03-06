@@ -1,14 +1,9 @@
-"""Integration tests for the Aperiodic Data Client."""
-
 import os
 from datetime import date
 from typing import get_args
 
 import polars as pl
 import pytest
-
-from aperiodic_data_client.types import DerivativeMetric
-
 
 from aperiodic_data_client import (
     APIError,
@@ -19,6 +14,7 @@ from aperiodic_data_client import (
     get_symbols,
     get_trade_metrics,
 )
+from aperiodic_data_client.types import DerivativeMetric, Interval, TimestampType
 
 API_KEY = os.environ.get("APERIODIC_API_KEY")
 requires_api_key = pytest.mark.skipif(
@@ -47,7 +43,11 @@ class TestGetOhlcv:
         with pytest.raises(APIError) as exc_info:
             get_ohlcv(
                 api_key="test-key",
-                **{**COMMON_PARAMS, "start_date": date(2024, 3, 1), "end_date": date(2024, 1, 1)},
+                **{
+                    **COMMON_PARAMS,
+                    "start_date": date(2024, 3, 1),
+                    "end_date": date(2024, 1, 1),
+                },
             )
         assert exc_info.value.status_code in [400, 401]
 
@@ -120,13 +120,13 @@ class TestGetL2Metrics:
         assert result["time"].is_sorted()
 
 
-
-
 class TestGetDerivativeMetrics:
     @pytest.mark.parametrize("metric", get_args(DerivativeMetric))
     def test_invalid_api_key_raises_401(self, metric):
         with pytest.raises(APIError) as exc_info:
-            get_derivative_metrics(api_key="invalid-key", metric=metric, **COMMON_PARAMS)
+            get_derivative_metrics(
+                api_key="invalid-key", metric=metric, **COMMON_PARAMS
+            )
         assert exc_info.value.status_code == 401
 
     @requires_api_key
@@ -158,30 +158,37 @@ class TestGetSymbols:
         assert "perpetual-BTC-USDT:USDT" in result
 
 
-
 class TestTypes:
     def test_timestamp_literal(self):
-        from aperiodic_data_client.types import TimestampType
         valid_values: list[TimestampType] = ["exchange", "true"]
         assert len(valid_values) == 2
 
     def test_interval_literal(self):
-        from aperiodic_data_client.types import Interval
         valid_values: list[Interval] = ["1m", "5m", "15m", "30m", "1h", "4h", "1d"]
         assert len(valid_values) == 7
 
     def test_exchange_literal(self):
         from aperiodic_data_client.types import Exchange
+
         valid_values: list[Exchange] = ["binance-futures", "binance", "okx-perps"]
         assert len(valid_values) == 3
 
     def test_trade_metric_literal(self):
         from aperiodic_data_client.types import TradeMetric
-        valid_values: list[TradeMetric] = ["vtwap", "flow", "trade_size", "impact", "range", "updownticks"]
+
+        valid_values: list[TradeMetric] = [
+            "vtwap",
+            "flow",
+            "trade_size",
+            "impact",
+            "range",
+            "updownticks",
+        ]
         assert len(valid_values) == 6
 
     def test_l1_metric_literal(self):
         from aperiodic_data_client.types import L1Metric
+
         valid_values: list[L1Metric] = ["l1_price", "l1_imbalance", "l1_liquidity"]
         assert len(valid_values) == 3
 

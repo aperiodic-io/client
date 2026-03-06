@@ -7,28 +7,24 @@ Interval = Literal["1m", "5m", "15m", "30m", "1h", "4h", "1d"]
 Exchange = Literal["binance-futures", "binance", "okx-perps"]
 
 # Derivatives exchanges
-DerivativesExchange = Literal[
-    "binance-delivery",
-    "binance-futures",
-    "bitfinex-derivatives",
-    "bitget-futures",
-    "bitmex",
-    "bybit",
-    "crypto-com",
-    "deribit",
-    "ftx",
-    "gate-io-futures",
-    "hyperliquid",
-    "okex-swap",
-]
+DerivativesExchange = Literal["binance-futures",]
 
-TradeMetric = Literal["vtwap", "flow", "trade_size", "impact", "range", "updownticks", "run_structure", "returns", "slippage"]
+TradeMetric = Literal[
+    "vtwap",
+    "flow",
+    "trade_size",
+    "impact",
+    "range",
+    "updownticks",
+    "run_structure",
+    "returns",
+    "slippage",
+]
 
 L1Metric = Literal["l1_price", "l1_imbalance", "l1_liquidity"]
 L2Metric = Literal["l2_imbalance", "l2_liquidity"]
 
 DerivativeMetric = Literal["basis", "funding", "open_interest"]
-
 
 
 class FileInfo(TypedDict):
