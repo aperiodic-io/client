@@ -108,9 +108,10 @@ class TestGetL1Metrics:
 
 
 class TestGetL2Metrics:
-    def test_invalid_api_key_raises_401(self):
+    @pytest.mark.parametrize("metric", get_args(L2Metric))
+    def test_invalid_api_key_raises_401(self, metric):
         with pytest.raises(APIError) as exc_info:
-            get_l2_metrics(api_key="invalid-key", **COMMON_PARAMS)
+            get_l2_metrics(api_key="invalid-key", metric=metric, **COMMON_PARAMS)
         assert exc_info.value.status_code == 401
 
     @requires_api_key
