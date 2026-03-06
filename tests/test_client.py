@@ -14,7 +14,15 @@ from aperiodic_data_client import (
     get_symbols,
     get_trade_metrics,
 )
-from aperiodic_data_client.types import DerivativeMetric, Interval, TimestampType
+from aperiodic_data_client.types import (
+    DerivativeMetric,
+    Exchange,
+    Interval,
+    L1Metric,
+    L2Metric,
+    TimestampType,
+    TradeMetric,
+)
 
 API_KEY = os.environ.get("APERIODIC_API_KEY")
 requires_api_key = pytest.mark.skipif(
@@ -65,7 +73,7 @@ class TestGetOhlcv:
 class TestGetTradeMetrics:
     @pytest.mark.parametrize(
         "metric",
-        ["vtwap", "flow", "trade_size", "impact", "range", "updownticks"],
+        get_args(TradeMetric),
     )
     def test_invalid_api_key_raises_401(self, metric):
         with pytest.raises(APIError) as exc_info:
@@ -75,7 +83,7 @@ class TestGetTradeMetrics:
     @requires_api_key
     @pytest.mark.parametrize(
         "metric",
-        ["vtwap", "flow", "trade_size", "impact", "range", "updownticks"],
+        get_args(TradeMetric),
     )
     def test_returns_dataframe(self, metric):
         result = get_trade_metrics(api_key=API_KEY, metric=metric, **COMMON_PARAMS)
@@ -86,14 +94,14 @@ class TestGetTradeMetrics:
 
 
 class TestGetL1Metrics:
-    @pytest.mark.parametrize("metric", ["l1_price", "l1_imbalance", "l1_liquidity"])
+    @pytest.mark.parametrize("metric", get_args(L1Metric))
     def test_invalid_api_key_raises_401(self, metric):
         with pytest.raises(APIError) as exc_info:
             get_l1_metrics(api_key="invalid-key", metric=metric, **COMMON_PARAMS)
         assert exc_info.value.status_code == 401
 
     @requires_api_key
-    @pytest.mark.parametrize("metric", ["l1_price", "l1_imbalance", "l1_liquidity"])
+    @pytest.mark.parametrize("metric", get_args(L1Metric))
     def test_returns_dataframe(self, metric):
         result = get_l1_metrics(api_key=API_KEY, metric=metric, **COMMON_PARAMS)
         assert isinstance(result, pl.DataFrame)
@@ -111,7 +119,7 @@ class TestGetL2Metrics:
     @requires_api_key
     @pytest.mark.parametrize(
         "metric",
-        ["l2_imbalance", "l2_liquidity"],
+        get_args(L2Metric),
     )
     def test_returns_dataframe(self, metric):
         result = get_l2_metrics(api_key=API_KEY, metric=metric, **COMMON_PARAMS)
@@ -160,37 +168,22 @@ class TestGetSymbols:
 
 class TestTypes:
     def test_timestamp_literal(self):
-        valid_values: list[TimestampType] = ["exchange", "true"]
-        assert len(valid_values) == 2
+        assert len(get_args(TimestampType)) == 2
 
     def test_interval_literal(self):
-        valid_values: list[Interval] = ["1m", "5m", "15m", "30m", "1h", "4h", "1d"]
-        assert len(valid_values) == 7
+        assert len(get_args(Interval)) == 7
 
     def test_exchange_literal(self):
-        from aperiodic_data_client.types import Exchange
-
-        valid_values: list[Exchange] = ["binance-futures", "binance", "okx-perps"]
-        assert len(valid_values) == 3
+        assert len(get_args(Exchange)) == 3
 
     def test_trade_metric_literal(self):
-        from aperiodic_data_client.types import TradeMetric
-
-        valid_values: list[TradeMetric] = [
-            "vtwap",
-            "flow",
-            "trade_size",
-            "impact",
-            "range",
-            "updownticks",
-        ]
-        assert len(valid_values) == 6
+        assert len(get_args(TradeMetric)) == 6
 
     def test_l1_metric_literal(self):
-        from aperiodic_data_client.types import L1Metric
+        assert len(get_args(L1Metric)) == 3
 
-        valid_values: list[L1Metric] = ["l1_price", "l1_imbalance", "l1_liquidity"]
-        assert len(valid_values) == 3
+    def test_l2_metric_literal(self):
+        assert len(get_args(L2Metric)) == 2
 
     def test_derivative_metric_literal(self):
         assert len(get_args(DerivativeMetric)) == 3
