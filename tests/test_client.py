@@ -27,15 +27,15 @@ requires_api_key = pytest.mark.skipif(
 )
 
 # Shared defaults for all data fetch calls
-COMMON_PARAMS = dict(
-    timestamp="exchange",
-    interval="1d",
-    exchange="binance-futures",
-    symbol="perpetual-BTC-USDT:USDT",
-    start_date=date(2024, 1, 1),
-    end_date=date(2024, 2, 1),
-    show_progress=False,
-)
+COMMON_PARAMS = {
+    "timestamp": "exchange",
+    "interval": "1d",
+    "exchange": "binance-futures",
+    "symbol": "perpetual-BTC-USDT:USDT",
+    "start_date": date(2024, 1, 1),
+    "end_date": date(2024, 2, 1),
+    "show_progress": False,
+}
 
 
 class TestGetOhlcv:
