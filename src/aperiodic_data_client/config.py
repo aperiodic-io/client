@@ -1,4 +1,4 @@
-DEFAULT_BASE_URL = "http://localhost:6175/api/v1"
+DEFAULT_BASE_URL = "http://aperiodic.io/api/v1"
 
 TIMESTAMP_COL = "timestamp"
 
