@@ -1,6 +1,16 @@
-# Aperiodic Data Client
+# Aperiodic Python Client
 
-Python client library for the Aperiodic aggregate market data API. Access pre-computed OHLCV candlestick data and other market aggregates with parallel downloads for optimal performance.
+A fast, typed Python SDK for downloading Aperiodic aggregate market datasets as `polars` DataFrames.
+
+This client is built for research and production workflows that need reliable historical data pulls across configurable date ranges, with concurrent downloads and retry handling built in.
+
+## Why use this client?
+
+- **One-line historical pulls** for OHLCV, trades, order-book, and derivatives datasets.
+- **Typed interfaces** for exchanges, intervals, timestamps, and metric names.
+- **Parallel parquet downloads** with per-file retries and exponential backoff.
+- **Sync + async APIs** for notebooks, scripts, and backend services.
+- **Polars-native output** for high-performance analytical pipelines.
 
 ## Installation
 
@@ -8,208 +18,204 @@ Python client library for the Aperiodic aggregate market data API. Access pre-co
 pip install aperiodic
 ```
 
-Or install from source:
+Install from source:
 
 ```bash
-git clone https://github.com/aperiodic-io/aperiodic-client.git
-cd aperiodic-io
+git clone https://github.com/aperiodic-io/client.git
+cd client
 pip install -e .
+```
+
+## Authentication
+
+All endpoints require your API key passed as `api_key="..."`.
+
+```python
+API_KEY = "your-api-key"
 ```
 
 ## Symbology
 
-All symbol identifiers follow the **[Atlas unified symbology](https://github.com/aperiodic-io/atlas)** — a standardised, exchange-agnostic naming scheme. Use Atlas to look up or convert symbol names before passing them to any function in this client.
+Symbols are expected in **Atlas unified symbology**.
 
-Refer to the [Atlas repository](https://github.com/aperiodic-io/atlas) for the full symbol catalogue and conversion utilities.
+- Atlas repo: <https://github.com/aperiodic-io/atlas>
+- Example symbol: `perpetual-BTC-USDT:USDT`
 
-## Quick Start
+## Quick start
 
 ```python
 from datetime import date
-from aperiodic import get_metric
+from aperiodic import get_ohlcv
 
-# Fetch hourly OHLCV data for BTC
-df = get_metric(
+# 1h BTC perpetual OHLCV from Binance futures
+df = get_ohlcv(
     api_key="your-api-key",
     timestamp="true",
     interval="1h",
     exchange="binance-futures",
     symbol="perpetual-BTC-USDT:USDT",
     start_date=date(2024, 1, 1),
-    end_date=date(2024, 3, 31),
+    end_date=date(2024, 1, 31),
 )
 
 print(df.head())
+print(df.columns)
 ```
 
-## Features
+## Available datasets and functions
 
-- **Parallel Downloads**: Files are downloaded concurrently for fast data retrieval
-- **Per-File Retry**: Each file download has independent retry with exponential backoff
-- **Date Range Support**: Fetch data spanning multiple months in a single call
-- **Progress Bar**: Visual progress indication with tqdm
-- **Type Hints**: Full type annotations for IDE support
-- **Async Support**: Both sync and async APIs available
-- **Jupyter Compatible**: Works seamlessly in Jupyter notebooks
+| Dataset family | Sync | Async | Metrics |
+|---|---|---|---|
+| OHLCV candles | `get_ohlcv` | `get_ohlcv_async` | N/A |
+| Trade metrics | `get_trade_metrics` | `get_trade_metrics_async` | `vtwap`, `flow`, `trade_size`, `impact`, `range`, `updownticks`, `run_structure`, `returns`, `slippage` |
+| L1 book metrics | `get_l1_metrics` | `get_l1_metrics_async` | `l1_price`, `l1_imbalance`, `l1_liquidity` |
+| L2 book metrics | `get_l2_metrics` | `get_l2_metrics_async` | `l2_imbalance`, `l2_liquidity` |
+| Derivatives metrics | `get_derivative_metrics` | `get_derivative_metrics_async` | `basis`, `funding`, `open_interest`, `derivative_price` |
+| Exchange symbols | `get_symbols` | `get_symbols_async` | N/A |
 
-## API Reference
+## Core parameters
 
-### `get_metric`
+Most data endpoints share this shape:
 
-Fetch historical OHLCV (Open, High, Low, Close, Volume) data.
+- `api_key`: Your Aperiodic API key.
+- `timestamp`: `"exchange"` or `"true"`.
+- `interval`: `"1m" | "5m" | "15m" | "30m" | "1h" | "4h" | "1d"`.
+- `exchange`: `"binance-futures" | "binance" | "okx-perps"`.
+- `symbol`: Atlas-formatted symbol string.
+- `start_date` / `end_date`: Inclusive date boundaries.
+- `show_progress`: show `tqdm` progress bar (default: `True`).
+- `max_concurrent`: max parallel file downloads (default: `10`).
+- `base_url`: API base URL override if needed.
+
+## Examples
+
+### Trade metrics example
 
 ```python
-def get_metric(
-    api_key: str,
-    timestamp: Literal["exchange", "true"],
-    interval: Literal["1m", "5m", "15m", "30m", "1h", "4h", "1d"],
-    exchange: Literal["binance-futures", "binance"],
-    symbol: str,
-    start_date: date,
-    end_date: date,
-    show_progress: bool = True,
-    max_concurrent: int = 10,
-) -> pl.DataFrame
+from datetime import date
+from aperiodic import get_trade_metrics
+
+flow_df = get_trade_metrics(
+    api_key="your-api-key",
+    metric="flow",
+    timestamp="exchange",
+    interval="5m",
+    exchange="binance-futures",
+    symbol="perpetual-ETH-USDT:USDT",
+    start_date=date(2024, 2, 1),
+    end_date=date(2024, 2, 29),
+)
 ```
 
-**Parameters:**
+### L1 / L2 metrics example
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `api_key` | `str` | Your Aperiodic API key |
-| `timestamp` | `"exchange"` \| `"true"` | Timestamp source - `"exchange"` for exchange-reported time, `"true"` for actual arrival time |
-| `interval` | `str` | Aggregation interval (`"1m"`, `"5m"`, `"15m"`, `"30m"`, `"1h"`, `"4h"`, `"1d"`) |
-| `exchange` | `str` | Source exchange (`"binance-futures"`, `"binance"`) |
-| `symbol` | `str` | Trading pair symbol in [Atlas unified symbology](https://github.com/aperiodic-io/atlas) (e.g., `"perpetual-BTC-USDT:USDT"`) |
-| `start_date` | `date` | Start date for the data range |
-| `end_date` | `date` | End date for the data range (inclusive) |
-| `base_url` | `str` | API base URL (optional) |
-| `show_progress` | `bool` | Show download progress bar (default: `True`) |
-| `max_concurrent` | `int` | Maximum concurrent downloads (default: `10`) |
+```python
+from datetime import date
+from aperiodic import get_l1_metrics, get_l2_metrics
 
-**Returns:**
+l1_df = get_l1_metrics(
+    api_key="your-api-key",
+    metric="l1_imbalance",
+    timestamp="true",
+    interval="1m",
+    exchange="binance-futures",
+    symbol="perpetual-BTC-USDT:USDT",
+    start_date=date(2024, 3, 1),
+    end_date=date(2024, 3, 7),
+)
 
-`pl.DataFrame` with columns:
-- `timestamp`: Unix timestamp in milliseconds
-- `datetime`: Parsed datetime (added by client)
-- `open`: Opening price
-- `high`: Highest price
-- `low`: Lowest price
-- `close`: Closing price
-- `volume`: Trading volume
+l2_df = get_l2_metrics(
+    api_key="your-api-key",
+    metric="l2_liquidity",
+    timestamp="true",
+    interval="1m",
+    exchange="binance-futures",
+    symbol="perpetual-BTC-USDT:USDT",
+    start_date=date(2024, 3, 1),
+    end_date=date(2024, 3, 7),
+)
+```
 
-### `get_metric_async`
+### Derivatives metrics example
 
-Async version of `get_metric`. Use this when you're already in an async context.
+```python
+from datetime import date
+from aperiodic import get_derivative_metrics
+
+funding_df = get_derivative_metrics(
+    api_key="your-api-key",
+    metric="funding",
+    timestamp="exchange",
+    interval="1h",
+    exchange="binance-futures",
+    symbol="perpetual-BTC-USDT:USDT",
+    start_date=date(2024, 1, 1),
+    end_date=date(2024, 3, 31),
+)
+```
+
+### Async usage
 
 ```python
 import asyncio
-from aperiodic import get_metric_async
+from datetime import date
+from aperiodic import get_ohlcv_async
 
-async def main():
-    df = await get_metric_async(
+async def main() -> None:
+    df = await get_ohlcv_async(
         api_key="your-api-key",
         timestamp="true",
         interval="1h",
         exchange="binance-futures",
-        symbol="btcusdt",
+        symbol="perpetual-BTC-USDT:USDT",
         start_date=date(2024, 1, 1),
-        end_date=date(2024, 3, 31),
+        end_date=date(2024, 1, 31),
     )
-    return df
+    print(df.shape)
 
-df = asyncio.run(main())
+asyncio.run(main())
 ```
 
-### `get_symbols`
-
-Get the list of available symbols for an exchange.
+### Symbol discovery
 
 ```python
 from aperiodic import get_symbols
 
-symbols = get_symbols(
-    api_key="your-api-key",
-    exchange="binance-futures",
-)
-
-print(f"Found {len(symbols)} symbols")
-print(symbols[:10])  # First 10 symbols
+symbols = get_symbols(api_key="your-api-key", exchange="binance-futures")
+print(f"symbols: {len(symbols)}")
+print(symbols[:10])
 ```
 
-**Parameters:**
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `api_key` | `str` | Your Aperiodic API key |
-| `exchange` | `str` | Source exchange (`"binance-futures"`, `"binance"`) |
-| `bucket` | `str` | Data bucket (default: `"ohlcv"`) |
-| `base_url` | `str` | API base URL (optional) |
-
-**Returns:**
-
-`list[str]` - List of available symbol names (lowercase)
-
-
-## Error Handling
+## Error handling
 
 ```python
-from aperiodic import get_metric, APIError, DownloadError
+from aperiodic import APIError, DownloadError, get_ohlcv
 
 try:
-    df = get_metric(...)
-except APIError as e:
-    print(f"API error {e.status_code}: {e.message}")
-    if e.details:
-        print(f"Details: {e.details}")
-except DownloadError as e:
-    print(f"Failed to download {e.year}-{e.month:02d}: {e.original_error}")
+    df = get_ohlcv(...)
+except APIError as exc:
+    print(f"API error {exc.status_code}: {exc.message}")
+    if exc.details:
+        print(exc.details)
+except DownloadError as exc:
+    print(f"Download failed for {exc.year}-{exc.month:02d}: {exc.original_error}")
 ```
 
-## Data Storage
+## Performance notes
 
-Data is stored using Hive partitioning in Parquet format:
-
-```
-{timestamp}/{interval}/exchange={exchange}/symbol={symbol}/year={year}/month={month}.parquet
-```
-
-The client handles all the complexity of fetching multiple monthly files and combining them into a single DataFrame.
-
-## Package Structure
-
-The client is organized into modules for different data types:
-
-```
-aperiodic/
-├── ohlcv/              # OHLCV candlestick data
-│   └── historical.py   # Historical data retrieval
-├── general/            # General utilities
-│   └── symbols.py      # Symbol listing
-├── client.py           # Shared utilities and base functionality
-├── config.py           # Configuration constants
-└── types.py            # Type definitions
-```
-
-You can import directly from the package or from submodules:
-
-```python
-# Direct import (recommended)
-from aperiodic import get_metric, get_symbols
-
-# Or import from submodules
-from aperiodic.ohlcv import get_metric
-from aperiodic.general import get_symbols
-```
+- Downloads are split into monthly parquet files server-side.
+- Files are fetched concurrently and concatenated locally.
+- Final output is sorted and filtered to your exact requested date range.
+- Tune `max_concurrent` based on your network and compute resources.
 
 ## Requirements
 
 - Python 3.11+
-- httpx
-- polars
-- tqdm
-- nest_asyncio (for Jupyter support)
+- `httpx`
+- `polars`
+- `tqdm`
+- `nest-asyncio`
 
 ## License
 
-MIT License - see LICENSE file for details.
+MIT

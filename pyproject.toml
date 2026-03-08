@@ -35,8 +35,9 @@ requires-python = ">=3.11"
 path = "src/aperiodic/__init__.py"
 
 [project.urls]
-Issues = "https://github.com/aperiodic-io/aperiodic-client/issues"
-Source = "https://github.com/aperiodic-io/aperiodic-client"
+Issues = "https://github.com/aperiodic-io/client/issues"
+Source = "https://github.com/aperiodic-io/client"
+PyPI = "https://pypi.org/project/aperiodic-io/client"
 
 [project.optional-dependencies]
 quality = [
