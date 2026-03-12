@@ -33,10 +33,11 @@ Symbols are expected in **[Atlas unified symbology](https://github.com/aperiodic
 
 ```python
 from datetime import date
-from aperiodic import get_ohlcv
+from aperiodic import get_metrics
 
-df = get_ohlcv(
+df = get_metrics(
     api_key="your-api-key",
+    metric="flow",
     timestamp="true",
     interval="1h",
     exchange="binance-futures",
@@ -187,30 +188,6 @@ async def main() -> None:
         )
 
 asyncio.run(main())
-```
-
-## Error Handling
-
-```python
-from datetime import date
-from aperiodic import APIError, DownloadError, get_ohlcv
-
-try:
-    df = get_ohlcv(
-        api_key="your-api-key",
-        timestamp="true",
-        interval="1d",
-        exchange="binance-futures",
-        symbol="perpetual-BTC-USDT:USDT",
-        start_date=date(2024, 1, 1),
-        end_date=date(2024, 1, 31),
-    )
-except APIError as exc:
-    print(f"API error {exc.status_code}: {exc.message}")
-    if exc.details:
-        print(exc.details)
-except DownloadError as exc:
-    print(f"Download failed for {exc.year}-{exc.month:02d}: {exc.original_error}")
 ```
 
 ## Performance Notes
