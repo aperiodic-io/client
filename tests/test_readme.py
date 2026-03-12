@@ -47,7 +47,7 @@ def _exec_namespace() -> dict:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("index,source", _extract_python_blocks(README))
+@pytest.mark.parametrize(("index", "source"), _extract_python_blocks(README))
 def test_readme_block_compiles(index, source):
     """Every Python block in README must be syntactically valid."""
     try:
@@ -57,7 +57,7 @@ def test_readme_block_compiles(index, source):
 
 
 @pytest.mark.parametrize(
-    "index,source",
+    ("index", "source"),
     [(i, s) for i, s in _extract_python_blocks(README) if "api_key=" in s],
 )
 def test_readme_block_runs(index, source):
@@ -71,8 +71,7 @@ def test_readme_block_runs(index, source):
     try:
         exec(source, ns)
     except APIError as exc:
-        assert exc.status_code == 401, (
-            f"README.md block {index}: expected 401, got {exc.status_code}"
-        )
+        if exc.status_code != 401:
+            pytest.fail(f"README.md block {index}: expected 401, got {exc.status_code}")
     except Exception as exc:
         pytest.fail(f"README.md block {index} raised unexpected error: {exc!r}")
