@@ -10,8 +10,8 @@ from .endpoints.market_data import (
     get_vwap,
     get_vwap_async,
 )
+from .endpoints.metrics import get_metrics, get_metrics_async
 from .endpoints.symbols import get_symbols, get_symbols_async
-from .endpoints.trades import get_metrics, get_metrics_async
 from .types import (
     DerivativeMetric,
     Exchange,
