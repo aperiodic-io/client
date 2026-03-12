@@ -24,15 +24,13 @@ async def get_derivative_metrics_async(
     max_concurrent: int = MAX_CONCURRENT_DOWNLOADS,
 ) -> pl.DataFrame:
     """
-    Fetch historical trade metrics data.
+    Fetch historical derivative metrics data.
 
     Available metrics:
-        - 'vtwap': Volume-weighted and time-weighted average prices
-        - 'flow': Taker buy/sell volume, count, ratios, size-segmented order flow
-        - 'trade_size': Size-segmented order volume/count and distribution statistics
-        - 'impact': Market impact metrics (Amihud, Kyle lambda, directional impact)
-        - 'range': Price high/low range and distribution statistics
-        - 'updownticks': Uptick and downtick count, volume, ratios and percentages
+        - 'basis': Basis between spot and futures price
+        - 'funding': Funding rate
+        - 'open_interest': Open interest
+        - 'derivative_price': Basic data of the derivative contract
 
     Args:
         api_key: Your Aperiodic API key
@@ -41,7 +39,7 @@ async def get_derivative_metrics_async(
         interval: Aggregation interval ('1m', '5m', '15m', '30m', '1h', '4h', '1d')
         exchange: Source exchange ('binance-futures')
         symbol: Trading pair symbol in Atlas unified symbology
-                (https://github.com/aperiodic-io/atlas), e.g. 'btcusdt', 'ethusdt'
+                (https://github.com/aperiodic-io/atlas), e.g. 'perpetual-BTC-USDT:USDT'
         start_date: Start date for the data range
         end_date: End date for the data range (inclusive)
         show_progress: Whether to show download progress bar (default: True)

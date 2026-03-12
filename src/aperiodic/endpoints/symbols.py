@@ -24,7 +24,7 @@ async def get_symbols_async(
 
     Returns:
         list[str]: List of available symbol names in Atlas unified symbology
-                   (https://github.com/aperiodic-io/atlas), lowercase
+                   (https://github.com/aperiodic-io/atlas), eg. 'perpetual-BTC-USDT:USDT'
 
     Raises:
         APIError: If the API returns an error response

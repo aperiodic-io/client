@@ -1,16 +1,6 @@
 # Aperiodic Python Client
 
-A fast, typed Python SDK for downloading Aperiodic aggregate market datasets as `polars` DataFrames.
-
-This client is built for research and production workflows that need reliable historical data pulls across configurable date ranges, with concurrent downloads and retry handling built in.
-
-## Why use this client?
-
-- **One-line historical pulls** for OHLCV, trades, order-book, and derivatives datasets.
-- **Typed interfaces** for exchanges, intervals, timestamps, and metric names.
-- **Parallel parquet downloads** with per-file retries and exponential backoff.
-- **Sync + async APIs** for notebooks, scripts, and backend services.
-- **Polars-native output** for high-performance analytical pipelines.
+A fast, typed Python SDK for [Aperiodic.io](https://aperiodic.io) — institutional-grade market microstructure, liquidity and order flow metrics with full exchange universe coverage. Turn flow dynamics into alpha in hours, not months. No tick infrastructure to build or maintain.
 
 ## Installation
 
@@ -21,35 +11,31 @@ pip install aperiodic
 Install from source:
 
 ```bash
-git clone https://github.com/aperiodic-io/client.git
-cd client
+git clone https://github.com/aperiodic-io/aperiodic-client.git
+cd aperiodic-client
 pip install -e .
 ```
 
 ## Authentication
 
-All endpoints require your API key passed as `api_key="..."`.
-
-```python
-API_KEY = "your-api-key"
-```
+All endpoints require your [Aperiodic.io](https://aperiodic.io) API key passed as `api_key="..."`.
 
 ## Symbology
 
-Symbols are expected in **Atlas unified symbology**.
+Symbols are expected in **[Atlas unified symbology](https://github.com/aperiodic-io/atlas)** — a standardised, exchange-agnostic naming scheme.
 
 - Atlas repo: <https://github.com/aperiodic-io/atlas>
 - Example symbol: `perpetual-BTC-USDT:USDT`
 
-## Quick start
+## Quick Start
 
 ```python
+import os
 from datetime import date
 from aperiodic import get_ohlcv
 
-# 1h BTC perpetual OHLCV from Binance futures
 df = get_ohlcv(
-    api_key="your-api-key",
+    api_key=os.environ["APERIODIC_API_KEY"],
     timestamp="true",
     interval="1h",
     exchange="binance-futures",
@@ -62,40 +48,51 @@ print(df.head())
 print(df.columns)
 ```
 
-## Available datasets and functions
+## Available Functions
 
-| Dataset family | Sync | Async | Metrics |
-|---|---|---|---|
-| OHLCV candles | `get_ohlcv` | `get_ohlcv_async` | N/A |
-| Trade metrics | `get_trade_metrics` | `get_trade_metrics_async` | `vtwap`, `flow`, `trade_size`, `impact`, `range`, `updownticks`, `run_structure`, `returns`, `slippage` |
-| L1 book metrics | `get_l1_metrics` | `get_l1_metrics_async` | `l1_price`, `l1_imbalance`, `l1_liquidity` |
-| L2 book metrics | `get_l2_metrics` | `get_l2_metrics_async` | `l2_imbalance`, `l2_liquidity` |
-| Derivatives metrics | `get_derivative_metrics` | `get_derivative_metrics_async` | `basis`, `funding`, `open_interest`, `derivative_price` |
-| Exchange symbols | `get_symbols` | `get_symbols_async` | N/A |
+| Dataset | Sync | Async | `metric` values |
+|---------|------|-------|-----------------|
+| Order, L1, L2 metrics | `get_metrics` | `get_metrics_async` | see below |
+| OHLCV candles | `get_ohlcv` | `get_ohlcv_async` | — |
+| VWAP | `get_vwap` | `get_vwap_async` | — |
+| TWAP | `get_twap` | `get_twap_async` | — |
+| Derivative metrics | `get_derivative_metrics` | `get_derivative_metrics_async` | see below |
+| Exchange symbols | `get_symbols` | `get_symbols_async` | — |
 
-## Core parameters
+### `get_metrics` — Trade & order book metrics
 
-Most data endpoints share this shape:
+**Trade metrics** (`TradeMetric`): `"vtwap"`, `"flow"`, `"trade_size"`, `"impact"`, `"range"`, `"updownticks"`, `"run_structure"`, `"returns"`, `"slippage"`
 
-- `api_key`: Your Aperiodic API key.
+**L1 order book** (`L1Metric`): `"l1_price"`, `"l1_imbalance"`, `"l1_liquidity"`
+
+**L2 order book** (`L2Metric`): `"l2_imbalance"`, `"l2_liquidity"`
+
+### `get_derivative_metrics` — Derivative metrics
+
+`"basis"`, `"funding"`, `"open_interest"`, `"derivative_price"`
+
+## Core Parameters
+
+All data endpoints share this shape:
+
+- `api_key`: Your [Aperiodic.io](https://aperiodic.io) API key.
 - `timestamp`: `"exchange"` or `"true"`.
-- `interval`: `"1m" | "5m" | "15m" | "30m" | "1h" | "4h" | "1d"`.
-- `exchange`: `"binance-futures" | "binance" | "okx-perps"`.
-- `symbol`: Atlas-formatted symbol string.
+- `interval`: `"1m"` | `"5m"` | `"15m"` | `"30m"` | `"1h"` | `"4h"` | `"1d"`.
+- `exchange`: `"binance-futures"` | `"okx-perps"`.
+- `symbol`: Atlas-formatted symbol string (e.g. `"perpetual-BTC-USDT:USDT"`).
 - `start_date` / `end_date`: Inclusive date boundaries.
 - `show_progress`: show `tqdm` progress bar (default: `True`).
 - `max_concurrent`: max parallel file downloads (default: `10`).
-- `base_url`: API base URL override if needed.
 
 ## Examples
 
-### Trade metrics example
+### Trade metrics
 
 ```python
 from datetime import date
-from aperiodic import get_trade_metrics
+from aperiodic import get_metrics
 
-flow_df = get_trade_metrics(
+flow_df = get_metrics(
     api_key="your-api-key",
     metric="flow",
     timestamp="exchange",
@@ -107,13 +104,13 @@ flow_df = get_trade_metrics(
 )
 ```
 
-### L1 / L2 metrics example
+### L1 / L2 order book metrics
 
 ```python
 from datetime import date
-from aperiodic import get_l1_metrics, get_l2_metrics
+from aperiodic import get_metrics
 
-l1_df = get_l1_metrics(
+l1_df = get_metrics(
     api_key="your-api-key",
     metric="l1_imbalance",
     timestamp="true",
@@ -124,7 +121,7 @@ l1_df = get_l1_metrics(
     end_date=date(2024, 3, 7),
 )
 
-l2_df = get_l2_metrics(
+l2_df = get_metrics(
     api_key="your-api-key",
     metric="l2_liquidity",
     timestamp="true",
@@ -136,7 +133,7 @@ l2_df = get_l2_metrics(
 )
 ```
 
-### Derivatives metrics example
+### Derivative metrics
 
 ```python
 from datetime import date
@@ -154,39 +151,45 @@ funding_df = get_derivative_metrics(
 )
 ```
 
-### Async usage
-
-```python
-import asyncio
-from datetime import date
-from aperiodic import get_ohlcv_async
-
-async def main() -> None:
-    df = await get_ohlcv_async(
-        api_key="your-api-key",
-        timestamp="true",
-        interval="1h",
-        exchange="binance-futures",
-        symbol="perpetual-BTC-USDT:USDT",
-        start_date=date(2024, 1, 1),
-        end_date=date(2024, 1, 31),
-    )
-    print(df.shape)
-
-asyncio.run(main())
-```
-
 ### Symbol discovery
 
 ```python
 from aperiodic import get_symbols
 
 symbols = get_symbols(api_key="your-api-key", exchange="binance-futures")
-print(f"symbols: {len(symbols)}")
-print(symbols[:10])
+perpetuals = [s for s in symbols if s.startswith("perpetual-")]
+print(f"Found {len(perpetuals)} perpetual symbols")
 ```
 
-## Error handling
+### Async usage
+
+```python
+import asyncio
+import os
+from datetime import date
+from aperiodic import get_metrics_async, get_symbols_async
+
+async def main() -> None:
+    symbols = await get_symbols_async(
+        api_key=os.environ["APERIODIC_API_KEY"],
+        exchange="binance-futures",
+    )
+    for symbol in symbols:
+        df = await get_metrics_async(
+            api_key=os.environ["APERIODIC_API_KEY"],
+            metric="l1_liquidity",
+            timestamp="true",
+            interval="1h",
+            exchange="binance-futures",
+            symbol=symbol,
+            start_date=date(2024, 1, 1),
+            end_date=date(2026, 1, 1),
+        )
+
+asyncio.run(main())
+```
+
+## Error Handling
 
 ```python
 from aperiodic import APIError, DownloadError, get_ohlcv
@@ -201,7 +204,7 @@ except DownloadError as exc:
     print(f"Download failed for {exc.year}-{exc.month:02d}: {exc.original_error}")
 ```
 
-## Performance notes
+## Performance Notes
 
 - Downloads are split into monthly parquet files server-side.
 - Files are fetched concurrently and concatenated locally.

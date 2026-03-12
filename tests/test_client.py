@@ -8,11 +8,11 @@ import pytest
 from aperiodic import (
     APIError,
     get_derivative_metrics,
-    get_l1_metrics,
-    get_l2_metrics,
+    get_metrics,
     get_ohlcv,
     get_symbols,
-    get_trade_metrics,
+    get_twap,
+    get_vwap,
 )
 from aperiodic.types import (
     DerivativeMetric,
@@ -67,6 +67,36 @@ class TestGetOhlcv:
         assert result["time"].is_sorted()
 
 
+class TestGetVwap:
+    def test_invalid_api_key_raises_401(self):
+        with pytest.raises(APIError) as exc_info:
+            get_vwap(api_key="invalid-key", **COMMON_PARAMS)
+        assert exc_info.value.status_code == 401
+
+    @requires_api_key
+    def test_returns_dataframe(self):
+        result = get_vwap(api_key=API_KEY, **COMMON_PARAMS)
+        assert isinstance(result, pl.DataFrame)
+        assert len(result) > 0
+        assert "time" in result.columns
+        assert result["time"].is_sorted()
+
+
+class TestGetTwap:
+    def test_invalid_api_key_raises_401(self):
+        with pytest.raises(APIError) as exc_info:
+            get_twap(api_key="invalid-key", **COMMON_PARAMS)
+        assert exc_info.value.status_code == 401
+
+    @requires_api_key
+    def test_returns_dataframe(self):
+        result = get_twap(api_key=API_KEY, **COMMON_PARAMS)
+        assert isinstance(result, pl.DataFrame)
+        assert len(result) > 0
+        assert "time" in result.columns
+        assert result["time"].is_sorted()
+
+
 class TestGetTradeMetrics:
     @pytest.mark.parametrize(
         "metric",
@@ -74,7 +104,7 @@ class TestGetTradeMetrics:
     )
     def test_invalid_api_key_raises_401(self, metric):
         with pytest.raises(APIError) as exc_info:
-            get_trade_metrics(api_key="invalid-key", metric=metric, **COMMON_PARAMS)
+            get_metrics(api_key="invalid-key", metric=metric, **COMMON_PARAMS)
         assert exc_info.value.status_code == 401
 
     @requires_api_key
@@ -83,7 +113,7 @@ class TestGetTradeMetrics:
         get_args(TradeMetric),
     )
     def test_returns_dataframe(self, metric):
-        result = get_trade_metrics(api_key=API_KEY, metric=metric, **COMMON_PARAMS)
+        result = get_metrics(api_key=API_KEY, metric=metric, **COMMON_PARAMS)
         assert isinstance(result, pl.DataFrame)
         assert len(result) > 0
         assert "time" in result.columns
@@ -94,13 +124,13 @@ class TestGetL1Metrics:
     @pytest.mark.parametrize("metric", get_args(L1Metric))
     def test_invalid_api_key_raises_401(self, metric):
         with pytest.raises(APIError) as exc_info:
-            get_l1_metrics(api_key="invalid-key", metric=metric, **COMMON_PARAMS)
+            get_metrics(api_key="invalid-key", metric=metric, **COMMON_PARAMS)
         assert exc_info.value.status_code == 401
 
     @requires_api_key
     @pytest.mark.parametrize("metric", get_args(L1Metric))
     def test_returns_dataframe(self, metric):
-        result = get_l1_metrics(api_key=API_KEY, metric=metric, **COMMON_PARAMS)
+        result = get_metrics(api_key=API_KEY, metric=metric, **COMMON_PARAMS)
         assert isinstance(result, pl.DataFrame)
         assert len(result) > 0
         assert "time" in result.columns
@@ -111,7 +141,7 @@ class TestGetL2Metrics:
     @pytest.mark.parametrize("metric", get_args(L2Metric))
     def test_invalid_api_key_raises_401(self, metric):
         with pytest.raises(APIError) as exc_info:
-            get_l2_metrics(api_key="invalid-key", metric=metric, **COMMON_PARAMS)
+            get_metrics(api_key="invalid-key", metric=metric, **COMMON_PARAMS)
         assert exc_info.value.status_code == 401
 
     @requires_api_key
@@ -120,7 +150,7 @@ class TestGetL2Metrics:
         get_args(L2Metric),
     )
     def test_returns_dataframe(self, metric):
-        result = get_l2_metrics(api_key=API_KEY, metric=metric, **COMMON_PARAMS)
+        result = get_metrics(api_key=API_KEY, metric=metric, **COMMON_PARAMS)
         assert isinstance(result, pl.DataFrame)
         assert len(result) > 0
         assert result["time"].is_sorted()
