@@ -1,6 +1,8 @@
 # Aperiodic Python Client
 
-A fast, typed Python SDK for [Aperiodic.io](https://aperiodic.io) — institutional-grade market microstructure, liquidity and order flow metrics with full exchange universe coverage. Turn flow dynamics into alpha in hours, not months. No tick infrastructure to build or maintain.
+Python client library for [Aperiodic.io](https://aperiodic.io) — institutional-grade market microstructure, liquidity and order flow metrics with full exchange universe coverage. Turn flow dynamics into alpha in hours, not months. No tick infrastructure to build or maintain.
+
+Access pre-computed derivative and microstructure metrics with parallel downloads for optimal performance.
 
 ## Installation
 
