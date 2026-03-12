@@ -32,12 +32,11 @@ Symbols are expected in **[Atlas unified symbology](https://github.com/aperiodic
 ## Quick Start
 
 ```python
-import os
 from datetime import date
 from aperiodic import get_ohlcv
 
 df = get_ohlcv(
-    api_key=os.environ["APERIODIC_API_KEY"],
+    api_key="your-api-key",
     timestamp="true",
     interval="1h",
     exchange="binance-futures",
@@ -167,18 +166,17 @@ print(f"Found {len(perpetuals)} perpetual symbols")
 
 ```python
 import asyncio
-import os
 from datetime import date
 from aperiodic import get_metrics_async, get_symbols_async
 
 async def main() -> None:
     symbols = await get_symbols_async(
-        api_key=os.environ["APERIODIC_API_KEY"],
+        api_key="your-api-key",
         exchange="binance-futures",
     )
     for symbol in symbols:
         df = await get_metrics_async(
-            api_key=os.environ["APERIODIC_API_KEY"],
+            api_key="your-api-key",
             metric="l1_liquidity",
             timestamp="true",
             interval="1h",
@@ -194,10 +192,19 @@ asyncio.run(main())
 ## Error Handling
 
 ```python
+from datetime import date
 from aperiodic import APIError, DownloadError, get_ohlcv
 
 try:
-    df = get_ohlcv(...)
+    df = get_ohlcv(
+        api_key="your-api-key",
+        timestamp="true",
+        interval="1d",
+        exchange="binance-futures",
+        symbol="perpetual-BTC-USDT:USDT",
+        start_date=date(2024, 1, 1),
+        end_date=date(2024, 1, 31),
+    )
 except APIError as exc:
     print(f"API error {exc.status_code}: {exc.message}")
     if exc.details:

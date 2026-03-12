@@ -17,7 +17,9 @@ async def main():
         exchange="binance-futures",
     )
     symbols = [s for s in symbols if s.startswith("perpetual-")]
-    print(len(symbols))
+
+    symbols = symbols[:1]  # only download the first symbol
+
     for symbol in symbols:
         df = await get_derivative_metrics_async(
             api_key=os.environ["APERIODIC_API_KEY"],
