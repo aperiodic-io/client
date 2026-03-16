@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from ..client import get_http_client, handle_api_error, run_async
-from ..config import DEFAULT_BASE_URL
+from ..config import DEFAULT_BASE_URL, get_headers
 from ..types import Exchange, SymbolsResponse
 
 
@@ -44,7 +44,7 @@ async def get_symbols_async(
         params = {
             "exchange": exchange,
         }
-        headers = {"X-API-KEY": api_key}
+        headers = get_headers(api_key)
 
         response = await client.get(url, params=params, headers=headers)
         await handle_api_error(response)
