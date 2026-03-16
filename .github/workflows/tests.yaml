@@ -40,7 +40,7 @@ jobs:
 
       - name: run-tests
         env:
-          APERIODIC_API_KEY: ${{ secrets.APERIODIC_API_KEY }}
+          APERIODIC_API_KEY: ${{ inputs.base_url && secrets.APERIODIC_STAGING_API_KEY || secrets.APERIODIC_API_KEY }}
           APERIODIC_API_URL: ${{ inputs.base_url || '' }}
         run: pytest . -s --cov --durations 0
 
