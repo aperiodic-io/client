@@ -1,4 +1,6 @@
-DEFAULT_BASE_URL = "http://aperiodic.io/api/v1"
+import os
+
+DEFAULT_BASE_URL = os.environ.get("APERIODIC_API_URL") or "http://aperiodic.io/api/v1"
 
 TIMESTAMP_COL = "timestamp"
 

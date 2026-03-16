@@ -2,6 +2,12 @@ name: tests
 
 on:
   push:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: 'API base URL to test against'
+        required: false
+        default: ''
 
 jobs:
   run-tests:
@@ -35,6 +41,7 @@ jobs:
       - name: run-tests
         env:
           APERIODIC_API_KEY: ${{ secrets.APERIODIC_API_KEY }}
+          APERIODIC_API_URL: ${{ inputs.base_url || '' }}
         run: pytest . -s --cov --durations 0
 
       - uses: codecov/codecov-action@v3
