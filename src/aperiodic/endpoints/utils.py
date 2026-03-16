@@ -13,7 +13,12 @@ from ..client import (
     get_http_client,
     handle_api_error,
 )
-from ..config import DEFAULT_BASE_URL, MAX_CONCURRENT_DOWNLOADS, TIMESTAMP_COL, get_headers
+from ..config import (
+    DEFAULT_BASE_URL,
+    MAX_CONCURRENT_DOWNLOADS,
+    TIMESTAMP_COL,
+    get_headers,
+)
 from ..types import AggregateDataResponse, Interval, TimestampType
 
 if TYPE_CHECKING:
