@@ -40,6 +40,9 @@ jobs:
 
       - name: run-tests
         env:
+          # inputs.base_url is empty on push-triggered runs (test against production),
+          # but set to a staging URL when dispatched externally (e.g. from unravel-router).
+          # Use the staging API key when a base_url is provided, otherwise production.
           APERIODIC_API_KEY: ${{ inputs.base_url && secrets.APERIODIC_STAGING_API_KEY || secrets.APERIODIC_API_KEY }}
           APERIODIC_API_URL: ${{ inputs.base_url || '' }}
         run: pytest . -s --cov --durations 0
