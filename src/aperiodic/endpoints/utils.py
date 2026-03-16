@@ -13,7 +13,7 @@ from ..client import (
     get_http_client,
     handle_api_error,
 )
-from ..config import DEFAULT_BASE_URL, MAX_CONCURRENT_DOWNLOADS, TIMESTAMP_COL
+from ..config import DEFAULT_BASE_URL, MAX_CONCURRENT_DOWNLOADS, TIMESTAMP_COL, get_headers
 from ..types import AggregateDataResponse, Interval, TimestampType
 
 if TYPE_CHECKING:
@@ -42,7 +42,7 @@ async def _fetch_presigned_urls(
         "start_date": start_date.isoformat(),
         "end_date": end_date.isoformat(),
     }
-    headers = {"X-API-KEY": api_key}
+    headers = get_headers(api_key)
 
     response = await client.get(url, params=params, headers=headers)
     await handle_api_error(response)
