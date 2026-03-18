@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import date
 
-import polars as pl
+from .._compat import DataFrame
 
 from ..client import run_async
 from ..config import DEFAULT_BASE_URL, MAX_CONCURRENT_DOWNLOADS
@@ -21,7 +21,7 @@ async def get_ohlcv_async(
     base_url: str = DEFAULT_BASE_URL,
     show_progress: bool = True,
     max_concurrent: int = MAX_CONCURRENT_DOWNLOADS,
-) -> pl.DataFrame:
+) -> DataFrame:
     """
     Fetch historical OHLCV (candlestick) data.
 
@@ -39,7 +39,7 @@ async def get_ohlcv_async(
         max_concurrent: Maximum concurrent downloads (default: 10)
 
     Returns:
-        pl.DataFrame with open, high, low, close, volume columns
+        DataFrame with open, high, low, close, volume columns
 
     Raises:
         APIError: If the API returns an error response
@@ -71,7 +71,7 @@ def get_ohlcv(
     base_url: str = DEFAULT_BASE_URL,
     show_progress: bool = True,
     max_concurrent: int = MAX_CONCURRENT_DOWNLOADS,
-) -> pl.DataFrame:
+) -> DataFrame:
     return run_async(
         get_ohlcv_async(
             api_key=api_key,
@@ -99,7 +99,7 @@ async def get_vwap_async(
     base_url: str = DEFAULT_BASE_URL,
     show_progress: bool = True,
     max_concurrent: int = MAX_CONCURRENT_DOWNLOADS,
-) -> pl.DataFrame:
+) -> DataFrame:
     """
     Fetch historical VWAP (volume-weighted average price) data.
 
@@ -117,7 +117,7 @@ async def get_vwap_async(
         max_concurrent: Maximum concurrent downloads (default: 10)
 
     Returns:
-        pl.DataFrame with VWAP columns
+        DataFrame with VWAP columns
 
     Raises:
         APIError: If the API returns an error response
@@ -149,7 +149,7 @@ def get_vwap(
     base_url: str = DEFAULT_BASE_URL,
     show_progress: bool = True,
     max_concurrent: int = MAX_CONCURRENT_DOWNLOADS,
-) -> pl.DataFrame:
+) -> DataFrame:
     return run_async(
         get_vwap_async(
             api_key=api_key,
@@ -177,7 +177,7 @@ async def get_twap_async(
     base_url: str = DEFAULT_BASE_URL,
     show_progress: bool = True,
     max_concurrent: int = MAX_CONCURRENT_DOWNLOADS,
-) -> pl.DataFrame:
+) -> DataFrame:
     """
     Fetch historical TWAP (time-weighted average price) data.
 
@@ -195,7 +195,7 @@ async def get_twap_async(
         max_concurrent: Maximum concurrent downloads (default: 10)
 
     Returns:
-        pl.DataFrame with TWAP columns
+        DataFrame with TWAP columns
 
     Raises:
         APIError: If the API returns an error response
@@ -227,7 +227,7 @@ def get_twap(
     base_url: str = DEFAULT_BASE_URL,
     show_progress: bool = True,
     max_concurrent: int = MAX_CONCURRENT_DOWNLOADS,
-) -> pl.DataFrame:
+) -> DataFrame:
     return run_async(
         get_twap_async(
             api_key=api_key,

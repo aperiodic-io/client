@@ -22,7 +22,6 @@ classifiers = [
 dependencies = [
   "httpx>=0.25.0",
   "nest-asyncio>=1.5.0",
-  "polars>=1.0.0",
   "tqdm>=4.66.0",
 ]
 description = "Client library for Aperiodic aggregate market data API - OHLCV and more"
@@ -40,6 +39,13 @@ Source = "https://github.com/aperiodic-io/client"
 PyPI = "https://pypi.org/project/aperiodic-io/client"
 
 [project.optional-dependencies]
+polars = [
+  "polars>=1.0.0",
+]
+embedded = [
+  "pyarrow>=14.0.0",
+  "pandas>=2.0.0",
+]
 quality = [
   "ruff>=0.1.0",
   "pre-commit>=2.20.0",
