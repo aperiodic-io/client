@@ -11,10 +11,11 @@ from datetime import datetime
 from io import BytesIO
 from unittest import mock
 
-import pandas as pd
-import pyarrow as pa
-import pyarrow.parquet as pq
 import pytest
+
+pd = pytest.importorskip("pandas")
+pa = pytest.importorskip("pyarrow")
+pq = pytest.importorskip("pyarrow.parquet")
 
 
 def _reload_compat_without_polars():
