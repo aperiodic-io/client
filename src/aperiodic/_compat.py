@@ -47,7 +47,6 @@ def read_parquet(buffer: BytesIO) -> Any:
     if HAS_POLARS:
         return pl.read_parquet(buffer)
     if HAS_PYARROW:
-        import pandas as pd
 
         table = pq.read_table(buffer)
         return table.to_pandas()
