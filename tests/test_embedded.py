@@ -1,15 +1,14 @@
-"""Tests for the embedded (pyarrow/pandas) backend.
+"""Tests for the pandas DataFrame backend.
 
-These tests verify that all _compat functions work correctly when polars
-is not available, simulating the `pip install aperiodic[embedded]` path.
+These tests verify that all backend functions work correctly when using
+aperiodic[pandas] (pyarrow + pandas), simulating environments where polars
+cannot be installed (e.g. marimo).
 """
 
 from __future__ import annotations
 
-import sys
 from datetime import datetime
 from io import BytesIO
-from unittest import mock
 
 import pytest
 
@@ -17,23 +16,15 @@ pd = pytest.importorskip("pandas")
 pa = pytest.importorskip("pyarrow")
 pq = pytest.importorskip("pyarrow.parquet")
 
-
-def _reload_compat_without_polars():
-    """Reload _compat with polars blocked so it falls through to pyarrow/pandas."""
-    import aperiodic._compat as compat_mod
-
-    with mock.patch.dict(sys.modules, {"polars": None}):
-        # Reset the flags and reload
-        original_polars = compat_mod.HAS_POLARS
-        compat_mod.HAS_POLARS = False
-        yield compat_mod
-        compat_mod.HAS_POLARS = original_polars
-
-
-@pytest.fixture
-def compat():
-    """Provide _compat module with polars disabled."""
-    yield from _reload_compat_without_polars()
+from aperiodic._backends._pandas import (  # noqa: E402
+    concat,
+    empty_dataframe,
+    filter_datetime_range,
+    from_epoch_ms,
+    has_column,
+    read_parquet,
+    sort_by,
+)
 
 
 @pytest.fixture
@@ -56,64 +47,56 @@ def sample_parquet_buffer():
 
 
 class TestReadParquet:
-    def test_returns_pandas_dataframe(self, compat, sample_parquet_buffer):
-        result = compat.read_parquet(sample_parquet_buffer)
+    def test_returns_pandas_dataframe(self, sample_parquet_buffer):
+        result = read_parquet(sample_parquet_buffer)
         assert isinstance(result, pd.DataFrame)
         assert len(result) == 3
         assert list(result.columns) == ["timestamp", "open", "high", "low", "close", "volume"]
 
-    def test_values_are_correct(self, compat, sample_parquet_buffer):
-        result = compat.read_parquet(sample_parquet_buffer)
+    def test_values_are_correct(self, sample_parquet_buffer):
+        result = read_parquet(sample_parquet_buffer)
         assert result["open"].tolist() == [42000.0, 42500.0, 43000.0]
         assert result["volume"].tolist() == [1000.0, 1500.0, 1200.0]
 
-    def test_raises_when_no_backend(self, compat):
-        compat.HAS_PYARROW = False
-        try:
-            with pytest.raises(ImportError, match="Either polars or pyarrow"):
-                compat.read_parquet(BytesIO(b""))
-        finally:
-            compat.HAS_PYARROW = True
-
 
 class TestConcat:
-    def test_concatenates_pandas_dataframes(self, compat):
+    def test_concatenates_pandas_dataframes(self):
         df1 = pd.DataFrame({"a": [1, 2], "b": [3, 4]})
         df2 = pd.DataFrame({"a": [5, 6], "b": [7, 8]})
-        result = compat.concat([df1, df2])
+        result = concat([df1, df2])
         assert isinstance(result, pd.DataFrame)
         assert len(result) == 4
         assert result["a"].tolist() == [1, 2, 5, 6]
 
-    def test_resets_index(self, compat):
+    def test_resets_index(self):
         df1 = pd.DataFrame({"a": [1]}, index=[5])
         df2 = pd.DataFrame({"a": [2]}, index=[10])
-        result = compat.concat([df1, df2])
+        result = concat([df1, df2])
         assert result.index.tolist() == [0, 1]
 
 
 class TestEmptyDataframe:
-    def test_returns_empty_pandas_dataframe(self, compat):
-        result = compat.empty_dataframe()
+    def test_returns_empty_pandas_dataframe(self):
+        result = empty_dataframe()
         assert isinstance(result, pd.DataFrame)
         assert len(result) == 0
 
 
 class TestFromEpochMs:
-    def test_adds_datetime_column(self, compat):
+    def test_adds_datetime_column(self):
         df = pd.DataFrame({"timestamp": [1704067200000]})  # 2024-01-01 00:00:00 UTC
-        result = compat.from_epoch_ms(df, "timestamp")
+        result = from_epoch_ms(df, "timestamp")
         assert "datetime" in result.columns
         assert result["datetime"].iloc[0] == pd.Timestamp("2024-01-01")
 
-    def test_does_not_mutate_original(self, compat):
+    def test_does_not_mutate_original(self):
         df = pd.DataFrame({"timestamp": [1704067200000]})
-        compat.from_epoch_ms(df, "timestamp")
+        from_epoch_ms(df, "timestamp")
         assert "datetime" not in df.columns
 
 
 class TestFilterDatetimeRange:
-    def test_filters_within_range(self, compat):
+    def test_filters_within_range(self):
         df = pd.DataFrame(
             {
                 "timestamp": [1, 2, 3],
@@ -122,7 +105,7 @@ class TestFilterDatetimeRange:
                 ),
             }
         )
-        result = compat.filter_datetime_range(
+        result = filter_datetime_range(
             df,
             start_date=datetime(2024, 1, 10),  # noqa: DTZ001
             end_date=datetime(2024, 1, 20),  # noqa: DTZ001
@@ -130,7 +113,7 @@ class TestFilterDatetimeRange:
         assert len(result) == 1
         assert result["timestamp"].tolist() == [2]
 
-    def test_resets_index_after_filter(self, compat):
+    def test_resets_index_after_filter(self):
         df = pd.DataFrame(
             {
                 "datetime": pd.to_datetime(
@@ -138,7 +121,7 @@ class TestFilterDatetimeRange:
                 ),
             }
         )
-        result = compat.filter_datetime_range(
+        result = filter_datetime_range(
             df,
             start_date=datetime(2024, 1, 10),  # noqa: DTZ001
             end_date=datetime(2024, 2, 15),  # noqa: DTZ001
@@ -147,30 +130,22 @@ class TestFilterDatetimeRange:
 
 
 class TestSortBy:
-    def test_sorts_ascending(self, compat):
+    def test_sorts_ascending(self):
         df = pd.DataFrame({"val": [3, 1, 2]})
-        result = compat.sort_by(df, "val")
+        result = sort_by(df, "val")
         assert result["val"].tolist() == [1, 2, 3]
 
-    def test_resets_index_after_sort(self, compat):
+    def test_resets_index_after_sort(self):
         df = pd.DataFrame({"val": [3, 1, 2]})
-        result = compat.sort_by(df, "val")
+        result = sort_by(df, "val")
         assert result.index.tolist() == [0, 1, 2]
 
 
 class TestHasColumn:
-    def test_true_when_exists(self, compat):
+    def test_true_when_exists(self):
         df = pd.DataFrame({"a": [1], "b": [2]})
-        assert compat.has_column(df, "a") is True
+        assert has_column(df, "a") is True
 
-    def test_false_when_missing(self, compat):
+    def test_false_when_missing(self):
         df = pd.DataFrame({"a": [1]})
-        assert compat.has_column(df, "z") is False
-
-
-class TestDataFrameType:
-    def test_dataframe_is_pandas_when_no_polars(self, compat):
-        """When polars is unavailable, DataFrame should resolve to pd.DataFrame."""
-        # The module-level DataFrame was set at import time (with polars available),
-        # so we just verify the fallback logic works
-        assert compat.HAS_POLARS is False
+        assert has_column(df, "z") is False
