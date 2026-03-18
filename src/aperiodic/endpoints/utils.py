@@ -5,9 +5,16 @@ from datetime import date, datetime
 from typing import TYPE_CHECKING
 
 import httpx
-import polars as pl
 from tqdm.auto import tqdm
 
+from .._compat import (
+    concat,
+    empty_dataframe,
+    filter_datetime_range,
+    from_epoch_ms,
+    has_column,
+    sort_by,
+)
 from ..client import (
     download_parquet_with_retry,
     get_http_client,
@@ -67,7 +74,7 @@ async def _get_files_from_bucket_async(
     base_url: str = DEFAULT_BASE_URL,
     show_progress: bool = True,
     max_concurrent: int = MAX_CONCURRENT_DOWNLOADS,
-) -> pl.DataFrame:
+) -> object:
     """
     Async implementation for fetching data from any bucket.
 
@@ -91,7 +98,7 @@ async def _get_files_from_bucket_async(
 
         files = response["files"]
         if not files:
-            return pl.DataFrame()
+            return empty_dataframe()
 
         # Step 2: Download all files in parallel with per-file retry
         semaphore = asyncio.Semaphore(max_concurrent)
@@ -124,22 +131,18 @@ async def _get_files_from_bucket_async(
         dataframes = [df for _, _, df in results_sorted]
 
         if not dataframes:
-            return pl.DataFrame()
+            return empty_dataframe()
 
-        combined = pl.concat(dataframes)
+        combined = concat(dataframes)
 
         # Filter to exact date range if timestamp column exists
-        if TIMESTAMP_COL in combined.columns:
-            combined = combined.with_columns(
-                pl.from_epoch(TIMESTAMP_COL, time_unit="ms").alias("datetime")
-            )
+        if has_column(combined, TIMESTAMP_COL):
+            combined = from_epoch_ms(combined, TIMESTAMP_COL)
 
             start_dt = datetime.combine(start_date, datetime.min.time())
             end_dt = datetime.combine(end_date, datetime.max.time())
-            combined = combined.filter(
-                (pl.col("datetime") >= start_dt) & (pl.col("datetime") <= end_dt)
-            )
+            combined = filter_datetime_range(combined, start_dt, end_dt)
 
-            combined = combined.sort(TIMESTAMP_COL)
+            combined = sort_by(combined, TIMESTAMP_COL)
 
         return combined

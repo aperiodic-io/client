@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from datetime import date
 
-import polars as pl
-
+from .._compat import DataFrame
 from ..client import run_async
 from ..config import DEFAULT_BASE_URL, MAX_CONCURRENT_DOWNLOADS
 from ..types import Exchange, Interval, L1Metric, L2Metric, TimestampType, TradeMetric
@@ -22,7 +21,7 @@ async def get_metrics_async(
     base_url: str = DEFAULT_BASE_URL,
     show_progress: bool = True,
     max_concurrent: int = MAX_CONCURRENT_DOWNLOADS,
-) -> pl.DataFrame:
+) -> DataFrame:
     """
     Fetch historical trade metrics data.
 
@@ -56,7 +55,7 @@ async def get_metrics_async(
         max_concurrent: Maximum concurrent downloads (default: 10)
 
     Returns:
-        pl.DataFrame with columns specific to the requested metric
+        DataFrame with columns specific to the requested metric
 
     Raises:
         APIError: If the API returns an error response
@@ -89,7 +88,7 @@ def get_metrics(
     base_url: str = DEFAULT_BASE_URL,
     show_progress: bool = True,
     max_concurrent: int = MAX_CONCURRENT_DOWNLOADS,
-) -> pl.DataFrame:
+) -> DataFrame:
     return run_async(
         get_metrics_async(
             api_key=api_key,

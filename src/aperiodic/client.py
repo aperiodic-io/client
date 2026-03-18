@@ -6,8 +6,8 @@ from io import BytesIO
 from typing import TYPE_CHECKING, TypeVar
 
 import httpx
-import polars as pl
 
+from ._compat import read_parquet
 from .config import DEFAULT_TIMEOUT, MAX_RETRIES, RETRY_BACKOFF_BASE
 
 if TYPE_CHECKING:
@@ -83,7 +83,7 @@ async def download_parquet_with_retry(
     semaphore: asyncio.Semaphore,
     max_retries: int = MAX_RETRIES,
     backoff_base: float = RETRY_BACKOFF_BASE,
-) -> tuple[int, int, pl.DataFrame]:
+) -> tuple[int, int, object]:
     """
     Download a single parquet file with retry logic and return as DataFrame.
 
@@ -113,7 +113,7 @@ async def download_parquet_with_retry(
                 response.raise_for_status()
 
                 buffer = BytesIO(response.content)
-                df = pl.read_parquet(buffer)
+                df = read_parquet(buffer)
 
                 return year, month, df
 
