@@ -3,7 +3,6 @@ from __future__ import annotations
 from datetime import date
 
 from .._compat import DataFrame
-
 from ..client import run_async
 from ..config import DEFAULT_BASE_URL, MAX_CONCURRENT_DOWNLOADS
 from ..types import Exchange, Interval, TimestampType
