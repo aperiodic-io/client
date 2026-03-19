@@ -2,7 +2,6 @@ import os
 from datetime import date
 from typing import get_args
 
-import polars as pl
 import pytest
 
 from aperiodic import (
@@ -14,6 +13,7 @@ from aperiodic import (
     get_twap,
     get_vwap,
 )
+from aperiodic._compat import HAS_POLARS, DataFrame
 from aperiodic.types import (
     DerivativeMetric,
     L1Metric,
@@ -59,12 +59,15 @@ class TestGetOhlcv:
     @requires_api_key
     def test_returns_dataframe_with_ohlcv_columns(self):
         result = get_ohlcv(api_key=API_KEY, **COMMON_PARAMS)
-        assert isinstance(result, pl.DataFrame)
+        assert isinstance(result, DataFrame)
         assert len(result) > 0
         for col in ["open", "high", "low", "close", "volume"]:
             assert col in result.columns
         assert result["time"].min().date() >= COMMON_PARAMS["start_date"]
-        assert result["time"].is_sorted()
+        if HAS_POLARS:
+            assert result["time"].is_sorted()
+        else:
+            assert result["time"].is_monotonic_increasing
 
 
 class TestGetVwap:
@@ -76,10 +79,13 @@ class TestGetVwap:
     @requires_api_key
     def test_returns_dataframe(self):
         result = get_vwap(api_key=API_KEY, **COMMON_PARAMS)
-        assert isinstance(result, pl.DataFrame)
+        assert isinstance(result, DataFrame)
         assert len(result) > 0
         assert "time" in result.columns
-        assert result["time"].is_sorted()
+        if HAS_POLARS:
+            assert result["time"].is_sorted()
+        else:
+            assert result["time"].is_monotonic_increasing
 
 
 class TestGetTwap:
@@ -91,10 +97,13 @@ class TestGetTwap:
     @requires_api_key
     def test_returns_dataframe(self):
         result = get_twap(api_key=API_KEY, **COMMON_PARAMS)
-        assert isinstance(result, pl.DataFrame)
+        assert isinstance(result, DataFrame)
         assert len(result) > 0
         assert "time" in result.columns
-        assert result["time"].is_sorted()
+        if HAS_POLARS:
+            assert result["time"].is_sorted()
+        else:
+            assert result["time"].is_monotonic_increasing
 
 
 class TestGetTradeMetrics:
@@ -114,10 +123,13 @@ class TestGetTradeMetrics:
     )
     def test_returns_dataframe(self, metric):
         result = get_metrics(api_key=API_KEY, metric=metric, **COMMON_PARAMS)
-        assert isinstance(result, pl.DataFrame)
+        assert isinstance(result, DataFrame)
         assert len(result) > 0
         assert "time" in result.columns
-        assert result["time"].is_sorted()
+        if HAS_POLARS:
+            assert result["time"].is_sorted()
+        else:
+            assert result["time"].is_monotonic_increasing
 
 
 class TestGetL1Metrics:
@@ -131,10 +143,13 @@ class TestGetL1Metrics:
     @pytest.mark.parametrize("metric", get_args(L1Metric))
     def test_returns_dataframe(self, metric):
         result = get_metrics(api_key=API_KEY, metric=metric, **COMMON_PARAMS)
-        assert isinstance(result, pl.DataFrame)
+        assert isinstance(result, DataFrame)
         assert len(result) > 0
         assert "time" in result.columns
-        assert result["time"].is_sorted()
+        if HAS_POLARS:
+            assert result["time"].is_sorted()
+        else:
+            assert result["time"].is_monotonic_increasing
 
 
 class TestGetL2Metrics:
@@ -151,9 +166,12 @@ class TestGetL2Metrics:
     )
     def test_returns_dataframe(self, metric):
         result = get_metrics(api_key=API_KEY, metric=metric, **COMMON_PARAMS)
-        assert isinstance(result, pl.DataFrame)
+        assert isinstance(result, DataFrame)
         assert len(result) > 0
-        assert result["time"].is_sorted()
+        if HAS_POLARS:
+            assert result["time"].is_sorted()
+        else:
+            assert result["time"].is_monotonic_increasing
 
 
 class TestGetDerivativeMetrics:
@@ -169,10 +187,13 @@ class TestGetDerivativeMetrics:
     @pytest.mark.parametrize("metric", get_args(DerivativeMetric))
     def test_returns_dataframe(self, metric):
         result = get_derivative_metrics(api_key=API_KEY, metric=metric, **COMMON_PARAMS)
-        assert isinstance(result, pl.DataFrame)
+        assert isinstance(result, DataFrame)
         assert len(result) > 0
         assert "time" in result.columns
-        assert result["time"].is_sorted()
+        if HAS_POLARS:
+            assert result["time"].is_sorted()
+        else:
+            assert result["time"].is_monotonic_increasing
 
 
 class TestGetSymbols:
