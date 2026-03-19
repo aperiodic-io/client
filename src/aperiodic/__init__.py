@@ -1,6 +1,7 @@
 __version__ = "0.1.0"
 
-from .client import AperiodicDataError, APIError, DownloadError
+from ._compat import APIError, DownloadError
+from .client import AperiodicDataError
 from .endpoints.derivative import get_derivative_metrics, get_derivative_metrics_async
 from .endpoints.market_data import (
     get_ohlcv,

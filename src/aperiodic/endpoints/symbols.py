@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from ..client import get_http_client, handle_api_error, run_async
+from .._compat import fetch_json
+from ..client import run_async
 from ..config import DEFAULT_BASE_URL, get_headers
 from ..types import Exchange, SymbolsResponse
 
@@ -39,18 +40,12 @@ async def get_symbols_async(
         >>> print(f"Found {len(symbols)} symbols")
         >>> print(symbols[:10])  # First 10 symbols
     """
-    async with get_http_client(timeout=30.0) as client:
-        url = f"{base_url}/metadata/symbols"
-        params = {
-            "exchange": exchange,
-        }
-        headers = get_headers(api_key)
+    url = f"{base_url}/metadata/symbols"
+    params = {"exchange": exchange}
+    headers = get_headers(api_key)
 
-        response = await client.get(url, params=params, headers=headers)
-        await handle_api_error(response)
-
-        data: SymbolsResponse = response.json()
-        return data["symbols"]
+    data: SymbolsResponse = await fetch_json(url, params=params, headers=headers)
+    return data["symbols"]
 
 
 def get_symbols(

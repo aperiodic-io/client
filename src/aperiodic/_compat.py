@@ -1,17 +1,26 @@
 """
-Compatibility layer — selects the appropriate DataFrame backend.
+Compatibility layer — selects the appropriate DataFrame and HTTP backends.
 
-Polars backend (pip install aperiodic[polars]):
-    Returns polars DataFrames. Preferred when polars is installed.
+DataFrame backends:
+    Polars (pip install aperiodic[polars]):
+        Returns polars DataFrames. Preferred when polars is installed.
+    Pandas (pip install aperiodic[pandas]):
+        Returns pandas DataFrames via pyarrow. Use in environments where
+        Rust-based packages (polars) cannot be installed (e.g. marimo).
 
-Pandas backend (pip install aperiodic[pandas]):
-    Returns pandas DataFrames via pyarrow. Use in environments where
-    Rust-based packages (polars) cannot be installed (e.g. marimo).
+HTTP transport backends:
+    httpx (default for CPython):
+        Uses httpx for async HTTP requests.
+    pyfetch (Pyodide/WASM):
+        Uses Pyodide's built-in pyfetch. Automatically selected when
+        httpx is not available (e.g. in marimo).
 """
 
 from __future__ import annotations
 
 from typing import Any
+
+# --- DataFrame backend detection ---
 
 try:
     import polars  # noqa: F401
@@ -100,12 +109,42 @@ else:
         return column in df.columns
 
 
+# --- HTTP transport backend detection ---
+
+try:
+    import httpx  # noqa: F401
+
+    HAS_HTTPX = True
+except ImportError:
+    HAS_HTTPX = False
+
+if HAS_HTTPX:
+    from ._backends._httpx_transport import (
+        APIError,
+        DownloadError,
+        download_parquet_bytes,
+        fetch_json,
+    )
+else:
+    from ._backends._pyfetch_transport import (
+        APIError,
+        DownloadError,
+        download_parquet_bytes,
+        fetch_json,
+    )
+
+
 __all__ = [
+    "HAS_HTTPX",
     "HAS_POLARS",
     "HAS_PYARROW",
+    "APIError",
     "DataFrame",
+    "DownloadError",
     "concat",
+    "download_parquet_bytes",
     "empty_dataframe",
+    "fetch_json",
     "filter_datetime_range",
     "from_epoch_ms",
     "has_column",
