@@ -20,7 +20,6 @@ classifiers = [
   "Operating System :: OS Independent",
 ]
 dependencies = [
-  "nest-asyncio>=1.5.0",
   "tqdm>=4.66.0",
 ]
 description = "Client library for Aperiodic aggregate market data API - OHLCV and more"
@@ -40,16 +39,16 @@ PyPI = "https://pypi.org/project/aperiodic-io/client"
 [project.optional-dependencies]
 polars = [
   "httpx>=0.25.0",
+  "nest-asyncio>=1.5.0",
   "polars>=1.0.0",
 ]
+# On CPython: pip install aperiodic[pandas] (includes httpx + nest-asyncio)
+# In marimo/Pyodide: micropip.install("aperiodic[pandas]") — httpx and
+# nest-asyncio are excluded by the Pyodide resolver since they can't run
+# in WASM; pyfetch and webloop are used automatically instead.
 pandas = [
   "httpx>=0.25.0",
-  "pyarrow>=14.0.0",
-  "pandas>=2.0.0",
-]
-# For Pyodide/WASM environments where httpx and polars can't be installed.
-# Uses pyfetch (built into Pyodide) for HTTP and pyarrow+pandas for DataFrames.
-embedded = [
+  "nest-asyncio>=1.5.0",
   "pyarrow>=14.0.0",
   "pandas>=2.0.0",
 ]
