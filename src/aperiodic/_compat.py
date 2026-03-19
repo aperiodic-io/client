@@ -124,6 +124,7 @@ if HAS_HTTPX:
         DownloadError,
         download_parquet_bytes,
         fetch_json,
+        run_async,
     )
 else:
     from ._backends._pyfetch_transport import (
@@ -131,6 +132,7 @@ else:
         DownloadError,
         download_parquet_bytes,
         fetch_json,
+        run_async,
     )
 
 
@@ -149,5 +151,6 @@ __all__ = [
     "from_epoch_ms",
     "has_column",
     "read_parquet",
+    "run_async",
     "sort_by",
 ]

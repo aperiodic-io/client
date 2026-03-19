@@ -9,8 +9,24 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import Any
+from typing import TYPE_CHECKING, Any, TypeVar
 from urllib.parse import quote
+
+if TYPE_CHECKING:
+    from collections.abc import Coroutine
+
+T = TypeVar("T")
+
+
+def run_async(coro: Coroutine[None, None, T]) -> T:
+    """Run an async coroutine in a Pyodide/WASM environment.
+
+    In Pyodide there is always a running event loop. We use
+    webloop's run_until_complete directly — nest_asyncio is not
+    available and not needed.
+    """
+    loop = asyncio.get_event_loop()
+    return loop.run_until_complete(coro)
 
 
 class APIError(Exception):

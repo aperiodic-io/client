@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from .._compat import fetch_json
-from ..client import run_async
+from .._compat import fetch_json, run_async
 from ..config import DEFAULT_BASE_URL, get_headers
 from ..types import Exchange, SymbolsResponse
 

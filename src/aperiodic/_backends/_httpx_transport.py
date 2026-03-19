@@ -4,11 +4,34 @@ from __future__ import annotations
 
 import asyncio
 import random
-from typing import Any
+from typing import TYPE_CHECKING, Any, TypeVar
 
 import httpx
 
 from ..config import DEFAULT_TIMEOUT, MAX_RETRIES, RETRY_BACKOFF_BASE
+
+if TYPE_CHECKING:
+    from collections.abc import Coroutine
+
+T = TypeVar("T")
+
+
+def run_async(coro: Coroutine[None, None, T]) -> T:
+    """Run an async coroutine, handling both regular Python and Jupyter environments.
+
+    Detects whether there's already a running event loop (e.g., in Jupyter)
+    and uses nest_asyncio to allow nested event loops if needed.
+    """
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(coro)
+
+    # Running in an existing event loop (e.g., Jupyter)
+    import nest_asyncio
+
+    nest_asyncio.apply()
+    return loop.run_until_complete(coro)
 
 
 class APIError(Exception):
