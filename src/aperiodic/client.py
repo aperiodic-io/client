@@ -1,14 +1,47 @@
-"""Backward-compatible re-exports.
+"""Client utilities — transport backend selection and shared exceptions.
 
-Everything lives in _compat now; this module keeps old
-``from aperiodic.client import …`` imports working.
+Selects httpx (CPython) or pyfetch (Pyodide/WASM) automatically.
 """
 
-from ._compat import APIError, DownloadError, run_async
+from __future__ import annotations
 
 
 class AperiodicDataError(Exception):
     """Base exception for Aperiodic Data Client errors."""
 
 
-__all__ = ["APIError", "AperiodicDataError", "DownloadError", "run_async"]
+# --- HTTP transport backend detection ---
+
+try:
+    import httpx  # noqa: F401
+
+    HAS_HTTPX = True
+except ImportError:
+    HAS_HTTPX = False
+
+if HAS_HTTPX:
+    from ._backends._httpx_transport import (
+        APIError,
+        DownloadError,
+        download_parquet_bytes,
+        fetch_json,
+        run_async,
+    )
+else:
+    from ._backends._pyfetch_transport import (
+        APIError,
+        DownloadError,
+        download_parquet_bytes,
+        fetch_json,
+        run_async,
+    )
+
+__all__ = [
+    "HAS_HTTPX",
+    "APIError",
+    "AperiodicDataError",
+    "DownloadError",
+    "download_parquet_bytes",
+    "fetch_json",
+    "run_async",
+]

@@ -9,15 +9,14 @@ from tqdm.auto import tqdm
 
 from .._compat import (
     concat,
-    download_parquet_bytes,
     empty_dataframe,
-    fetch_json,
     filter_datetime_range,
     from_epoch_ms,
     has_column,
     read_parquet,
     sort_by,
 )
+from ..client import download_parquet_bytes, fetch_json
 from ..config import (
     DEFAULT_BASE_URL,
     MAX_CONCURRENT_DOWNLOADS,

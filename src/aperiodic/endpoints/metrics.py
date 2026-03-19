@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from datetime import date
 
-from .._compat import DataFrame, run_async
+from .._compat import DataFrame
+from ..client import run_async
 from ..config import DEFAULT_BASE_URL, MAX_CONCURRENT_DOWNLOADS
 from ..types import Exchange, Interval, L1Metric, L2Metric, TimestampType, TradeMetric
 from .utils import _get_files_from_bucket_async

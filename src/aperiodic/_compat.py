@@ -1,19 +1,12 @@
 """
-Compatibility layer — selects the appropriate DataFrame and HTTP backends.
+Compatibility layer for DataFrame backends.
 
-DataFrame backends:
-    Polars (pip install aperiodic[polars]):
-        Returns polars DataFrames. Preferred when polars is installed.
-    Pandas (pip install aperiodic[pandas]):
-        Returns pandas DataFrames via pyarrow. Use in environments where
-        Rust-based packages (polars) cannot be installed (e.g. marimo).
+When polars is available (pip install aperiodic[polars]), all data is returned
+as polars DataFrames (original behavior).
 
-HTTP transport backends:
-    httpx (default for CPython):
-        Uses httpx for async HTTP requests.
-    pyfetch (Pyodide/WASM):
-        Uses Pyodide's built-in pyfetch. Automatically selected when
-        httpx is not available (e.g. in marimo).
+When polars is not available (pip install aperiodic[pandas]), pyarrow is used
+to read parquet files and data is returned as pandas DataFrames - suitable for
+environments like marimo where Rust-based packages (polars) cannot be installed.
 """
 
 from __future__ import annotations
@@ -109,48 +102,15 @@ else:
         return column in df.columns
 
 
-# --- HTTP transport backend detection ---
-
-try:
-    import httpx  # noqa: F401
-
-    HAS_HTTPX = True
-except ImportError:
-    HAS_HTTPX = False
-
-if HAS_HTTPX:
-    from ._backends._httpx_transport import (
-        APIError,
-        DownloadError,
-        download_parquet_bytes,
-        fetch_json,
-        run_async,
-    )
-else:
-    from ._backends._pyfetch_transport import (
-        APIError,
-        DownloadError,
-        download_parquet_bytes,
-        fetch_json,
-        run_async,
-    )
-
-
 __all__ = [
-    "HAS_HTTPX",
     "HAS_POLARS",
     "HAS_PYARROW",
-    "APIError",
     "DataFrame",
-    "DownloadError",
     "concat",
-    "download_parquet_bytes",
     "empty_dataframe",
-    "fetch_json",
     "filter_datetime_range",
     "from_epoch_ms",
     "has_column",
     "read_parquet",
-    "run_async",
     "sort_by",
 ]
