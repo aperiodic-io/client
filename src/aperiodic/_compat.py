@@ -1,17 +1,19 @@
 """
-Compatibility layer — selects the appropriate DataFrame backend.
+Compatibility layer for DataFrame backends.
 
-Polars backend (pip install aperiodic[polars]):
-    Returns polars DataFrames. Preferred when polars is installed.
+When polars is available (pip install aperiodic[polars]), all data is returned
+as polars DataFrames (original behavior).
 
-Pandas backend (pip install aperiodic[pandas]):
-    Returns pandas DataFrames via pyarrow. Use in environments where
-    Rust-based packages (polars) cannot be installed (e.g. marimo).
+When polars is not available (pip install aperiodic[pandas]), pyarrow is used
+to read parquet files and data is returned as pandas DataFrames - suitable for
+environments like marimo where Rust-based packages (polars) cannot be installed.
 """
 
 from __future__ import annotations
 
 from typing import Any
+
+# --- DataFrame backend detection ---
 
 try:
     import polars  # noqa: F401
