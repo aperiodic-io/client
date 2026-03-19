@@ -51,8 +51,8 @@ elif HAS_PYARROW:
         sort_by,
     )
 else:
-    from io import BytesIO
     from datetime import datetime
+    from io import BytesIO
 
     DataFrame = Any  # type: ignore[assignment,misc]
 
@@ -101,9 +101,9 @@ else:
 
 
 __all__ = [
-    "DataFrame",
     "HAS_POLARS",
     "HAS_PYARROW",
+    "DataFrame",
     "concat",
     "empty_dataframe",
     "filter_datetime_range",

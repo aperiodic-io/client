@@ -2,8 +2,12 @@ import os
 from datetime import date
 from typing import get_args
 
-import polars as pl
 import pytest
+
+try:
+    import polars as pl
+except ImportError:
+    pl = None  # type: ignore[assignment]
 
 from aperiodic import (
     APIError,
