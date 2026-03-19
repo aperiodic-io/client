@@ -1,6 +1,6 @@
 """Embedded async client for Pyodide/WASM environments.
 
-Uses pyfetch for HTTP and pyarrow+pandas for data handling.
+Uses pyfetch for HTTP and the pandas backend for data handling.
 All methods are async since pyfetch is async-only.
 """
 
@@ -10,9 +10,7 @@ from io import BytesIO
 from typing import Any
 from urllib.parse import quote
 
-import pandas as pd
-import pyarrow.parquet as pq
-
+from .._backends._pandas import DataFrame, concat, empty_dataframe, read_parquet
 from ._transport import fetch_bytes, fetch_json
 
 DEFAULT_BASE_URL = "https://aperiodic.io"
@@ -57,7 +55,7 @@ class Client:
         end_date: str,
         timestamp: str = "exchange",
         **kwargs: Any,
-    ) -> pd.DataFrame:
+    ) -> DataFrame:
         """Fetch data from any bucket, download parquets, and return a DataFrame.
 
         Args:
@@ -90,11 +88,13 @@ class Client:
             raise RuntimeError(f"API error: {response['error']}")
 
         if "data" in response:
+            import pandas as pd
+
             return pd.DataFrame(response["data"])
 
         files = response.get("files", [])
         if not files:
-            return pd.DataFrame()
+            return empty_dataframe()
 
         dataframes = []
         for file_info in files:
@@ -103,30 +103,29 @@ class Client:
             dataframes.append(df)
 
         if not dataframes:
-            return pd.DataFrame()
+            return empty_dataframe()
 
-        return pd.concat(dataframes, ignore_index=True)
+        return concat(dataframes)
 
-    async def _download_parquet(self, presigned_url: str) -> pd.DataFrame:
+    async def _download_parquet(self, presigned_url: str) -> DataFrame:
         """Download a parquet file via the CORS proxy and return as DataFrame."""
         proxy_url = f"{self._api_url}/data/proxy?url={quote(presigned_url)}"
         raw = await fetch_bytes(proxy_url, headers=self._headers())
-        table = pq.read_table(BytesIO(raw))
-        return table.to_pandas()
+        return read_parquet(BytesIO(raw))
 
-    async def get_ohlcv(self, **kwargs: Any) -> pd.DataFrame:
+    async def get_ohlcv(self, **kwargs: Any) -> DataFrame:
         """Fetch OHLCV candlestick data."""
         return await self.get_data("ohlcv", **kwargs)
 
-    async def get_vwap(self, **kwargs: Any) -> pd.DataFrame:
+    async def get_vwap(self, **kwargs: Any) -> DataFrame:
         """Fetch VWAP data."""
         return await self.get_data("vwap", **kwargs)
 
-    async def get_twap(self, **kwargs: Any) -> pd.DataFrame:
+    async def get_twap(self, **kwargs: Any) -> DataFrame:
         """Fetch TWAP data."""
         return await self.get_data("twap", **kwargs)
 
-    async def get_metrics(self, metric: str, **kwargs: Any) -> pd.DataFrame:
+    async def get_metrics(self, metric: str, **kwargs: Any) -> DataFrame:
         """Fetch trade/L1/L2 metrics data.
 
         Args:
@@ -137,7 +136,7 @@ class Client:
 
     async def get_derivative_metrics(
         self, metric: str, **kwargs: Any
-    ) -> pd.DataFrame:
+    ) -> DataFrame:
         """Fetch derivative metrics data.
 
         Args:
