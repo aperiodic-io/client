@@ -25,7 +25,7 @@ requires_api_key = pytest.mark.skipif(
 def test_get_metrics_returns_polars_dataframe():
     result = get_metrics(
         api_key=API_KEY,
-        metric="volume",
+        metric="flow",
         timestamp="exchange",
         interval="1d",
         exchange="binance-futures",
