@@ -43,9 +43,9 @@ polars = [
   "polars>=1.0.0",
 ]
 # On CPython: pip install aperiodic[pandas] (includes httpx + nest-asyncio)
-# In marimo/Pyodide: micropip.install("aperiodic[pandas]") — httpx and
-# nest-asyncio are excluded by the Pyodide resolver since they can't run
-# in WASM; pyfetch and webloop are used automatically instead.
+# In marimo/Pyodide: micropip.install("aperiodic[pandas]") — httpx may be
+# installed (it's pure Python) but cannot make network requests in WASM.
+# The client detects sys.platform == "emscripten" and uses pyfetch instead.
 pandas = [
   "httpx>=0.25.0",
   "nest-asyncio>=1.5.0",

@@ -5,18 +5,27 @@ Selects httpx (CPython) or pyfetch (Pyodide/WASM) automatically.
 
 from __future__ import annotations
 
+import sys
+
 
 class AperiodicDataError(Exception):
     """Base exception for Aperiodic Data Client errors."""
 
 
 # --- HTTP transport backend detection ---
+# In Pyodide/WASM (emscripten), httpx may be importable but cannot make
+# real network requests (no sockets). Always use pyfetch there.
 
-try:
-    import httpx  # noqa: F401
+_IS_WASM = sys.platform == "emscripten"
 
-    HAS_HTTPX = True
-except ImportError:
+if not _IS_WASM:
+    try:
+        import httpx  # noqa: F401
+
+        HAS_HTTPX = True
+    except ImportError:
+        HAS_HTTPX = False
+else:
     HAS_HTTPX = False
 
 if HAS_HTTPX:
