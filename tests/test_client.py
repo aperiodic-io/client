@@ -22,9 +22,6 @@ from aperiodic.types import (
 )
 
 API_KEY = os.environ.get("APERIODIC_API_KEY")
-requires_api_key = pytest.mark.skipif(
-    API_KEY is None, reason="APERIODIC_API_KEY environment variable not set"
-)
 
 # Shared defaults for all data fetch calls
 COMMON_PARAMS = {
@@ -56,7 +53,6 @@ class TestGetOhlcv:
             )
         assert exc_info.value.status_code in [400, 401]
 
-    @requires_api_key
     def test_returns_dataframe_with_ohlcv_columns(self):
         result = get_ohlcv(api_key=API_KEY, **COMMON_PARAMS)
         assert isinstance(result, DataFrame)
@@ -76,7 +72,6 @@ class TestGetVwap:
             get_vwap(api_key="invalid-key", **COMMON_PARAMS)
         assert exc_info.value.status_code == 401
 
-    @requires_api_key
     def test_returns_dataframe(self):
         result = get_vwap(api_key=API_KEY, **COMMON_PARAMS)
         assert isinstance(result, DataFrame)
@@ -94,7 +89,6 @@ class TestGetTwap:
             get_twap(api_key="invalid-key", **COMMON_PARAMS)
         assert exc_info.value.status_code == 401
 
-    @requires_api_key
     def test_returns_dataframe(self):
         result = get_twap(api_key=API_KEY, **COMMON_PARAMS)
         assert isinstance(result, DataFrame)
@@ -116,7 +110,6 @@ class TestGetTradeMetrics:
             get_metrics(api_key="invalid-key", metric=metric, **COMMON_PARAMS)
         assert exc_info.value.status_code == 401
 
-    @requires_api_key
     @pytest.mark.parametrize(
         "metric",
         get_args(TradeMetric),
@@ -139,7 +132,6 @@ class TestGetL1Metrics:
             get_metrics(api_key="invalid-key", metric=metric, **COMMON_PARAMS)
         assert exc_info.value.status_code == 401
 
-    @requires_api_key
     @pytest.mark.parametrize("metric", get_args(L1Metric))
     def test_returns_dataframe(self, metric):
         result = get_metrics(api_key=API_KEY, metric=metric, **COMMON_PARAMS)
@@ -159,7 +151,6 @@ class TestGetL2Metrics:
             get_metrics(api_key="invalid-key", metric=metric, **COMMON_PARAMS)
         assert exc_info.value.status_code == 401
 
-    @requires_api_key
     @pytest.mark.parametrize(
         "metric",
         get_args(L2Metric),
@@ -183,7 +174,6 @@ class TestGetDerivativeMetrics:
             )
         assert exc_info.value.status_code == 401
 
-    @requires_api_key
     @pytest.mark.parametrize("metric", get_args(DerivativeMetric))
     def test_returns_dataframe(self, metric):
         result = get_derivative_metrics(api_key=API_KEY, metric=metric, **COMMON_PARAMS)
@@ -207,7 +197,6 @@ class TestGetSymbols:
             get_symbols(api_key="test-key", exchange="invalid-exchange")  # type: ignore
         assert exc_info.value.status_code in [400, 401]
 
-    @requires_api_key
     def test_returns_symbols_for_exchange(self):
         result = get_symbols(api_key=API_KEY, exchange="binance-futures")
         assert isinstance(result, list)
