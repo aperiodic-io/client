@@ -16,12 +16,8 @@ pl = pytest.importorskip("polars")
 from aperiodic import get_metrics  # noqa: E402
 
 API_KEY = os.environ.get("APERIODIC_API_KEY")
-requires_api_key = pytest.mark.skipif(
-    API_KEY is None, reason="APERIODIC_API_KEY environment variable not set"
-)
 
 
-@requires_api_key
 def test_get_metrics_returns_polars_dataframe():
     result = get_metrics(
         api_key=API_KEY,
