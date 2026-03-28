@@ -1,7 +1,7 @@
 from typing import Literal, TypedDict
 
 TimestampType = Literal["exchange", "true"]
-Interval = Literal["1m", "5m", "15m", "30m", "1h", "4h", "1d"]
+Interval = Literal["1s", "1m", "5m", "15m", "30m", "1h", "4h", "1d"]
 
 # Spot/futures exchanges
 Exchange = Literal["binance-futures", "binance", "okx-perps"]
