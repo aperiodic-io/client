@@ -4,7 +4,7 @@ requires = ["hatchling"]
 
 [project]
 name = "aperiodic"
-version = "4.0.3"
+version = "4.0.4"
 version_pattern = "MAJOR.MINOR.PATCH"
 
 authors = [
@@ -141,7 +141,7 @@ lint.fixable = ["ALL"]
 
 # bumpver command: ``bumpver update --patch``
 [tool.bumpver]
-current_version = "4.0.3"
+current_version = "4.0.4"
 version_pattern = "MAJOR.MINOR.PATCH"
 commit_message = "chore(Release): Bump version from {old_version} -> {new_version}"
 commit = true
