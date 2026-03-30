@@ -41,7 +41,7 @@ df = get_metrics(
     timestamp="true",
     interval="1h",
     exchange="binance-futures",
-    symbol="perpetual-BTC-USDT:USDT",
+    symbol="perpetual-BTC-USDT:USDT", # See https://github.com/aperiodic-io/atlas
     start_date=date(2024, 1, 1),
     end_date=date(2024, 1, 31),
 )
@@ -81,7 +81,7 @@ All data endpoints share this shape:
 - `timestamp`: `"exchange"` or `"true"`.
 - `interval`: `"1m"` | `"5m"` | `"15m"` | `"30m"` | `"1h"` | `"4h"` | `"1d"`.
 - `exchange`: `"binance-futures"` | `"okx-perps"`.
-- `symbol`: Atlas-formatted symbol string (e.g. `"perpetual-BTC-USDT:USDT"`).
+- `symbol`: [Atlas](https://github.com/aperiodic-io/atlas)-formatted symbol string (e.g. `"perpetual-BTC-USDT:USDT"`).
 - `start_date` / `end_date`: Inclusive date boundaries.
 - `show_progress`: show `tqdm` progress bar (default: `True`).
 - `max_concurrent`: max parallel file downloads (default: `10`).
@@ -100,7 +100,7 @@ flow_df = get_metrics(
     timestamp="exchange",
     interval="5m",
     exchange="binance-futures",
-    symbol="perpetual-ETH-USDT:USDT",
+    symbol="perpetual-ETH-USDT:USDT", # See https://github.com/aperiodic-io/atlas
     start_date=date(2024, 2, 1),
     end_date=date(2024, 2, 29),
 )
@@ -118,7 +118,7 @@ l1_df = get_metrics(
     timestamp="true",
     interval="1m",
     exchange="binance-futures",
-    symbol="perpetual-BTC-USDT:USDT",
+    symbol="perpetual-BTC-USDT:USDT", # See https://github.com/aperiodic-io/atlas
     start_date=date(2024, 3, 1),
     end_date=date(2024, 3, 7),
 )
@@ -129,7 +129,7 @@ l2_df = get_metrics(
     timestamp="true",
     interval="1m",
     exchange="binance-futures",
-    symbol="perpetual-BTC-USDT:USDT",
+    symbol="perpetual-BTC-USDT:USDT", # See https://github.com/aperiodic-io/atlas
     start_date=date(2024, 3, 1),
     end_date=date(2024, 3, 7),
 )
@@ -147,7 +147,7 @@ funding_df = get_derivative_metrics(
     timestamp="exchange",
     interval="1h",
     exchange="binance-futures",
-    symbol="perpetual-BTC-USDT:USDT",
+    symbol="perpetual-BTC-USDT:USDT", # See https://github.com/aperiodic-io/atlas
     start_date=date(2024, 1, 1),
     end_date=date(2024, 3, 31),
 )
@@ -158,7 +158,7 @@ funding_df = get_derivative_metrics(
 ```python
 from aperiodic import get_symbols
 
-symbols = get_symbols(api_key="your-api-key", exchange="binance-futures")
+symbols = get_symbols(api_key="your-api-key", exchange="binance-futures") # Returns Atlas symbols: https://github.com/aperiodic-io/atlas
 perpetuals = [s for s in symbols if s.startswith("perpetual-")]
 print(f"Found {len(perpetuals)} perpetual symbols")
 ```
@@ -182,7 +182,7 @@ async def main() -> None:
             timestamp="true",
             interval="1h",
             exchange="binance-futures",
-            symbol=symbol,
+            symbol=symbol, # See https://github.com/aperiodic-io/atlas
             start_date=date(2024, 1, 1),
             end_date=date(2026, 1, 1),
         )
