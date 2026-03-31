@@ -10,6 +10,7 @@ Strategy:
 """
 
 import asyncio
+import functools
 import re
 from datetime import date
 from pathlib import Path
@@ -18,6 +19,20 @@ import pytest
 
 import aperiodic
 from aperiodic import APIError
+from aperiodic._compat import HAS_POLARS
+
+_DATAFRAME_FUNCTIONS = [
+    "get_ohlcv",
+    "get_ohlcv_async",
+    "get_vwap",
+    "get_vwap_async",
+    "get_twap",
+    "get_twap_async",
+    "get_metrics",
+    "get_metrics_async",
+    "get_derivative_metrics",
+    "get_derivative_metrics_async",
+]
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -39,6 +54,19 @@ def _exec_namespace() -> dict:
     # expose every public name from the aperiodic package
     for name in aperiodic.__all__:
         ns[name] = getattr(aperiodic, name)
+    if not HAS_POLARS:
+        # In pandas-only environments, default output="pandas" for all DataFrame
+        # functions so README examples (which omit output) work correctly.
+        for name in _DATAFRAME_FUNCTIONS:
+            if name in ns:
+                original = ns[name]
+
+                @functools.wraps(original)
+                def _with_pandas_output(*args, _fn=original, **kwargs):
+                    kwargs.setdefault("output", "pandas")
+                    return _fn(*args, **kwargs)
+
+                ns[name] = _with_pandas_output
     return ns
 
 
