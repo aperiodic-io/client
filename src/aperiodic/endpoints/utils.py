@@ -7,15 +7,7 @@ from typing import TYPE_CHECKING
 
 from tqdm.auto import tqdm
 
-from .._compat import (
-    concat,
-    empty_dataframe,
-    filter_datetime_range,
-    from_epoch_ms,
-    has_column,
-    read_parquet,
-    sort_by,
-)
+from .._compat import get_backend_module
 from ..client import download_parquet_bytes, fetch_json
 from ..config import (
     DEFAULT_BASE_URL,
@@ -23,7 +15,7 @@ from ..config import (
     TIMESTAMP_COL,
     get_headers,
 )
-from ..types import AggregateDataResponse, Interval, TimestampType
+from ..types import AggregateDataResponse, Interval, OutputFormat, TimestampType
 
 if TYPE_CHECKING:
     pass
@@ -67,6 +59,7 @@ async def _get_files_from_bucket_async(
     base_url: str = DEFAULT_BASE_URL,
     show_progress: bool = True,
     max_concurrent: int = MAX_CONCURRENT_DOWNLOADS,
+    output: OutputFormat = "polars",
 ) -> object:
     """
     Async implementation for fetching data from any bucket.
@@ -74,6 +67,8 @@ async def _get_files_from_bucket_async(
     Fetches pre-signed URLs from the API, then downloads all parquet files
     in parallel with per-file retry logic and concatenates them into a single DataFrame.
     """
+    backend = get_backend_module(output)
+
     # Step 1: Get pre-signed URLs for all months
     response = await _fetch_presigned_urls(
         api_key=api_key,
@@ -89,7 +84,7 @@ async def _get_files_from_bucket_async(
 
     files = response["files"]
     if not files:
-        return empty_dataframe()
+        return backend.empty_dataframe()
 
     # Step 2: Download all files in parallel with per-file retry
     headers = get_headers(api_key)
@@ -120,21 +115,21 @@ async def _get_files_from_bucket_async(
 
     # Step 3: Sort by year/month, read parquet, and concatenate
     results_sorted = sorted(results, key=lambda x: (x[0], x[1]))
-    dataframes = [read_parquet(BytesIO(raw)) for _, _, raw in results_sorted]
+    dataframes = [backend.read_parquet(BytesIO(raw)) for _, _, raw in results_sorted]
 
     if not dataframes:
-        return empty_dataframe()
+        return backend.empty_dataframe()
 
-    combined = concat(dataframes)
+    combined = backend.concat(dataframes)
 
     # Filter to exact date range if timestamp column exists
-    if has_column(combined, TIMESTAMP_COL):
-        combined = from_epoch_ms(combined, TIMESTAMP_COL)
+    if backend.has_column(combined, TIMESTAMP_COL):
+        combined = backend.from_epoch_ms(combined, TIMESTAMP_COL)
 
         start_dt = datetime.combine(start_date, datetime.min.time())
         end_dt = datetime.combine(end_date, datetime.max.time())
-        combined = filter_datetime_range(combined, start_dt, end_dt)
+        combined = backend.filter_datetime_range(combined, start_dt, end_dt)
 
-        combined = sort_by(combined, TIMESTAMP_COL)
+        combined = backend.sort_by(combined, TIMESTAMP_COL)
 
     return combined

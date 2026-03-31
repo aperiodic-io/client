@@ -18,6 +18,7 @@ from .types import (
     Interval,
     L1Metric,
     L2Metric,
+    OutputFormat,
     TimestampType,
     TradeMetric,
 )
@@ -31,6 +32,7 @@ __all__ = [
     "Interval",
     "L1Metric",
     "L2Metric",
+    "OutputFormat",
     "TimestampType",
     "TradeMetric",
     "get_derivative_metrics",

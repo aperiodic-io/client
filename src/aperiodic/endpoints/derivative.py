@@ -1,12 +1,57 @@
 from __future__ import annotations
 
 from datetime import date
+from typing import TYPE_CHECKING, Literal, overload
 
-from .._compat import DataFrame
 from ..client import run_async
 from ..config import DEFAULT_BASE_URL, MAX_CONCURRENT_DOWNLOADS
-from ..types import DerivativeMetric, Exchange, Interval, TimestampType, TradeMetric
+from ..types import (
+    DerivativeMetric,
+    Exchange,
+    Interval,
+    OutputFormat,
+    TimestampType,
+    TradeMetric,
+)
 from .utils import _get_files_from_bucket_async
+
+if TYPE_CHECKING:
+    import pandas as pd
+    import polars as pl
+
+
+@overload
+async def get_derivative_metrics_async(
+    api_key: str,
+    metric: DerivativeMetric,
+    timestamp: TimestampType,
+    interval: Interval,
+    exchange: Exchange,
+    symbol: str,
+    start_date: date,
+    end_date: date,
+    base_url: str = ...,
+    show_progress: bool = ...,
+    max_concurrent: int = ...,
+    output: Literal["polars"] = ...,
+) -> pl.DataFrame: ...
+
+
+@overload
+async def get_derivative_metrics_async(
+    api_key: str,
+    metric: DerivativeMetric,
+    timestamp: TimestampType,
+    interval: Interval,
+    exchange: Exchange,
+    symbol: str,
+    start_date: date,
+    end_date: date,
+    base_url: str = ...,
+    show_progress: bool = ...,
+    max_concurrent: int = ...,
+    output: Literal["pandas"] = ...,
+) -> pd.DataFrame: ...
 
 
 async def get_derivative_metrics_async(
@@ -21,7 +66,8 @@ async def get_derivative_metrics_async(
     base_url: str = DEFAULT_BASE_URL,
     show_progress: bool = True,
     max_concurrent: int = MAX_CONCURRENT_DOWNLOADS,
-) -> DataFrame:
+    output: OutputFormat = "polars",
+) -> pl.DataFrame | pd.DataFrame:
     """
     Fetch historical derivative metrics data.
 
@@ -43,6 +89,7 @@ async def get_derivative_metrics_async(
         end_date: End date for the data range (inclusive)
         show_progress: Whether to show download progress bar (default: True)
         max_concurrent: Maximum concurrent downloads (default: 10)
+        output: DataFrame library to use - 'polars' (default) or 'pandas'
 
     Returns:
         DataFrame with columns specific to the requested metric
@@ -51,7 +98,7 @@ async def get_derivative_metrics_async(
         APIError: If the API returns an error response
         DownloadError: If a file download fails after all retries
     """
-    return await _get_files_from_bucket_async(
+    return await _get_files_from_bucket_async(  # type: ignore[return-value]
         api_key=api_key,
         bucket=metric,
         timestamp=timestamp,
@@ -63,7 +110,42 @@ async def get_derivative_metrics_async(
         base_url=base_url,
         show_progress=show_progress,
         max_concurrent=max_concurrent,
+        output=output,
     )
+
+
+@overload
+def get_derivative_metrics(
+    api_key: str,
+    metric: TradeMetric,
+    timestamp: TimestampType,
+    interval: Interval,
+    exchange: Exchange,
+    symbol: str,
+    start_date: date,
+    end_date: date,
+    base_url: str = ...,
+    show_progress: bool = ...,
+    max_concurrent: int = ...,
+    output: Literal["polars"] = ...,
+) -> pl.DataFrame: ...
+
+
+@overload
+def get_derivative_metrics(
+    api_key: str,
+    metric: TradeMetric,
+    timestamp: TimestampType,
+    interval: Interval,
+    exchange: Exchange,
+    symbol: str,
+    start_date: date,
+    end_date: date,
+    base_url: str = ...,
+    show_progress: bool = ...,
+    max_concurrent: int = ...,
+    output: Literal["pandas"] = ...,
+) -> pd.DataFrame: ...
 
 
 def get_derivative_metrics(
@@ -78,7 +160,8 @@ def get_derivative_metrics(
     base_url: str = DEFAULT_BASE_URL,
     show_progress: bool = True,
     max_concurrent: int = MAX_CONCURRENT_DOWNLOADS,
-) -> DataFrame:
+    output: OutputFormat = "polars",
+) -> pl.DataFrame | pd.DataFrame:
     return run_async(
         get_derivative_metrics_async(
             api_key=api_key,
@@ -92,5 +175,6 @@ def get_derivative_metrics(
             base_url=base_url,
             show_progress=show_progress,
             max_concurrent=max_concurrent,
+            output=output,
         )
     )

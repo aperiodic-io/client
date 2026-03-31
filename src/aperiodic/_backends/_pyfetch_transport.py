@@ -143,6 +143,9 @@ def _build_url(base: str, params: dict[str, str]) -> str:
 
 async def _handle_pyfetch_error(resp: Any) -> None:
     """Handle non-200 pyfetch responses by raising APIError."""
+    if resp.status == 401:
+        raise APIError(message="Authorization Required", status_code=resp.status)
+
     text = await resp.string()
     try:
         error_data = json.loads(text)

@@ -1,5 +1,7 @@
 from typing import Literal, TypedDict
 
+OutputFormat = Literal["polars", "pandas"]
+
 TimestampType = Literal["exchange", "true"]
 Interval = Literal["1s", "1m", "5m", "15m", "30m", "1h", "4h", "1d"]
 

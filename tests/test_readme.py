@@ -18,6 +18,7 @@ import pytest
 
 import aperiodic
 from aperiodic import APIError
+from aperiodic._compat import HAS_POLARS
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -56,6 +57,10 @@ def test_readme_block_compiles(index, source):
         pytest.fail(f"README.md block {index} has a syntax error: {exc}")
 
 
+@pytest.mark.skipif(
+    not HAS_POLARS,
+    reason="README examples use the default output='polars'; not applicable in pandas-only environments",
+)
 @pytest.mark.parametrize(
     ("index", "source"),
     [(i, s) for i, s in _extract_python_blocks(README) if "api_key=" in s],
