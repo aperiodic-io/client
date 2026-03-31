@@ -11,11 +11,10 @@ environments like marimo where Rust-based packages (polars) cannot be installed.
 
 from __future__ import annotations
 
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from ._backends._polars import DataFrame as PolarsDataFrame
-    from ._backends._pandas import DataFrame as PandasDataFrame
+    pass
 
 # --- DataFrame backend detection ---
 
@@ -115,13 +114,13 @@ def get_backend_module(output: str) -> Any:
             )
         from ._backends import _polars
         return _polars
-    else:  # "pandas"
-        if not HAS_PYARROW:
-            raise ImportError(
-                "pandas/pyarrow is not installed. Install with: pip install aperiodic[pandas]"
-            )
-        from ._backends import _pandas
-        return _pandas
+    # "pandas"
+    if not HAS_PYARROW:
+        raise ImportError(
+            "pandas/pyarrow is not installed. Install with: pip install aperiodic[pandas]"
+        )
+    from ._backends import _pandas
+    return _pandas
 
 
 __all__ = [
@@ -132,8 +131,8 @@ __all__ = [
     "empty_dataframe",
     "filter_datetime_range",
     "from_epoch_ms",
+    "get_backend_module",
     "has_column",
     "read_parquet",
     "sort_by",
-    "get_backend_module",
 ]

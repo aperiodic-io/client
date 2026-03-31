@@ -32,6 +32,7 @@ COMMON_PARAMS = {
     "start_date": date(2024, 1, 1),
     "end_date": date(2024, 2, 1),
     "show_progress": False,
+    "output": "polars" if HAS_POLARS else "pandas",
 }
 
 

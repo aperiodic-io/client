@@ -5,7 +5,14 @@ from typing import TYPE_CHECKING, Literal, overload
 
 from ..client import run_async
 from ..config import DEFAULT_BASE_URL, MAX_CONCURRENT_DOWNLOADS
-from ..types import DerivativeMetric, Exchange, Interval, OutputFormat, TimestampType, TradeMetric
+from ..types import (
+    DerivativeMetric,
+    Exchange,
+    Interval,
+    OutputFormat,
+    TimestampType,
+    TradeMetric,
+)
 from .utils import _get_files_from_bucket_async
 
 if TYPE_CHECKING:
