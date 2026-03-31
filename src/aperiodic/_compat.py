@@ -106,14 +106,23 @@ else:
 
 
 def get_backend_module(output: str) -> Any:
-    """Return the backend module (_polars or _pandas) for the given output format."""
+    """Return the backend module (_polars or _pandas) for the given output format.
+
+    When output="polars" but polars is not installed, falls back to the pandas
+    backend (mirroring the auto-detection behaviour of the compatibility layer).
+    Raises ImportError only when no backend is available at all.
+    """
     if output == "polars":
-        if not HAS_POLARS:
-            raise ImportError(
-                "polars is not installed. Install with: pip install aperiodic[polars]"
-            )
-        from ._backends import _polars
-        return _polars
+        if HAS_POLARS:
+            from ._backends import _polars
+            return _polars
+        if HAS_PYARROW:
+            from ._backends import _pandas
+            return _pandas
+        raise ImportError(
+            "No DataFrame backend available. "
+            "Install with: pip install aperiodic[polars] or pip install aperiodic[pandas]"
+        )
     # "pandas"
     if not HAS_PYARROW:
         raise ImportError(
