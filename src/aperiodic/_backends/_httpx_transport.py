@@ -111,7 +111,7 @@ async def download_parquet_bytes(
 
 async def _handle_api_error(response: httpx.Response) -> None:
     if response.status_code == 401:
-        raise APIError(message="Unauthorized", status_code=response.status_code)
+        raise APIError(message="Authorization Required", status_code=response.status_code)
     if response.status_code == 403:
         raise APIError(message="Forbidden", status_code=response.status_code)
     if response.status_code == 404:
