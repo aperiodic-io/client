@@ -39,7 +39,7 @@ HYPERLIQUID_PARAMS = {
     "timestamp": "exchange",
     "interval": "1d",
     "exchange": "hyperliquid-perps",
-    "symbol": "perpetual-BTC-USDT:USDT",
+    "symbol": "perpetual-BTC-USDC:USDC",
     "start_date": date(2025, 3, 1),
     "end_date": date(2025, 3, 31),
     "show_progress": False,
