@@ -80,7 +80,7 @@ All data endpoints share this shape:
 - `api_key`: Your [Aperiodic.io](https://aperiodic.io) API key.
 - `timestamp`: `"exchange"` or `"true"`.
 - `interval`: `"1m"` | `"5m"` | `"15m"` | `"30m"` | `"1h"` | `"4h"` | `"1d"`.
-- `exchange`: `"binance-futures"` | `"okx-perps"`.
+- `exchange`: `"binance-futures"` | `"okx-perps"` | `"hyperliquid-perps"`.
 - `symbol`: [Atlas](https://github.com/aperiodic-io/atlas)-formatted symbol string (e.g. `"perpetual-BTC-USDT:USDT"`).
 - `start_date` / `end_date`: Inclusive date boundaries.
 - `show_progress`: show `tqdm` progress bar (default: `True`).

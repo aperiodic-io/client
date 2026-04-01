@@ -35,6 +35,17 @@ COMMON_PARAMS = {
     "output": "polars" if HAS_POLARS else "pandas",
 }
 
+HYPERLIQUID_PARAMS = {
+    "timestamp": "exchange",
+    "interval": "1d",
+    "exchange": "hyperliquid-perps",
+    "symbol": "perpetual-BTC-USDT:USDT",
+    "start_date": date(2025, 3, 1),
+    "end_date": date(2025, 3, 31),
+    "show_progress": False,
+    "output": "polars" if HAS_POLARS else "pandas",
+}
+
 
 class TestGetOhlcv:
     def test_invalid_api_key_raises_401(self):
@@ -203,3 +214,43 @@ class TestGetSymbols:
         assert isinstance(result, list)
         assert len(result) > 0
         assert "perpetual-BTC-USDT:USDT" in result
+
+
+class TestHyperliquidPerps:
+    def test_get_symbols(self):
+        result = get_symbols(api_key=API_KEY, exchange="hyperliquid-perps")
+        assert isinstance(result, list)
+        assert len(result) > 0
+
+    def test_get_ohlcv(self):
+        result = get_ohlcv(api_key=API_KEY, **HYPERLIQUID_PARAMS)
+        assert isinstance(result, DataFrame)
+        assert len(result) > 0
+        for col in ["open", "high", "low", "close", "volume"]:
+            assert col in result.columns
+
+    def test_get_vwap(self):
+        result = get_vwap(api_key=API_KEY, **HYPERLIQUID_PARAMS)
+        assert isinstance(result, DataFrame)
+        assert len(result) > 0
+        assert "time" in result.columns
+
+    def test_get_twap(self):
+        result = get_twap(api_key=API_KEY, **HYPERLIQUID_PARAMS)
+        assert isinstance(result, DataFrame)
+        assert len(result) > 0
+        assert "time" in result.columns
+
+    @pytest.mark.parametrize("metric", get_args(TradeMetric))
+    def test_get_trade_metrics(self, metric):
+        result = get_metrics(api_key=API_KEY, metric=metric, **HYPERLIQUID_PARAMS)
+        assert isinstance(result, DataFrame)
+        assert len(result) > 0
+        assert "time" in result.columns
+
+    @pytest.mark.parametrize("metric", get_args(DerivativeMetric))
+    def test_get_derivative_metrics(self, metric):
+        result = get_derivative_metrics(api_key=API_KEY, metric=metric, **HYPERLIQUID_PARAMS)
+        assert isinstance(result, DataFrame)
+        assert len(result) > 0
+        assert "time" in result.columns
