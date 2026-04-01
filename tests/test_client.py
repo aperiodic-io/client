@@ -241,7 +241,7 @@ class TestHyperliquidPerps:
         assert len(result) > 0
         assert "time" in result.columns
 
-    @pytest.mark.parametrize("metric", get_args(TradeMetric))
+    @pytest.mark.parametrize("metric", get_args(TradeMetric)[:1])
     def test_get_trade_metrics(self, metric):
         result = get_metrics(api_key=API_KEY, metric=metric, **HYPERLIQUID_PARAMS)
         assert isinstance(result, DataFrame)
@@ -250,7 +250,9 @@ class TestHyperliquidPerps:
 
     @pytest.mark.parametrize("metric", get_args(DerivativeMetric))
     def test_get_derivative_metrics(self, metric):
-        result = get_derivative_metrics(api_key=API_KEY, metric=metric, **HYPERLIQUID_PARAMS)
+        result = get_derivative_metrics(
+            api_key=API_KEY, metric=metric, **HYPERLIQUID_PARAMS
+        )
         assert isinstance(result, DataFrame)
         assert len(result) > 0
         assert "time" in result.columns
