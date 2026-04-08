@@ -45,6 +45,10 @@ jobs:
             pip install polars
           else
             pip install ".[${{ matrix.backend }},tests]"
+            if [ "${{ matrix.backend }}" = "pandas" ]; then
+              pip uninstall -y polars || true
+              python -c "import importlib.util; assert importlib.util.find_spec('polars') is None, 'polars must not be installed in pandas job'"
+            fi
           fi
 
       - name: run-tests
