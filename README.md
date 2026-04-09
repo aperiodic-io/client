@@ -201,15 +201,15 @@ Any authenticated user — even without a paid subscription — can access a cur
 from datetime import date
 from aperiodic import get_ohlcv
 
-# Copy the exact parameters from https://aperiodic.io/catalog#preview
+# Use the exact parameters listed at https://aperiodic.io/catalog#preview
 df = get_ohlcv(
     api_key="your-api-key",  # sign up free at aperiodic.io
-    exchange="...",
-    symbol="...",
-    interval="...",
-    timestamp="...",
-    start_date=date(...),
-    end_date=date(...),
+    exchange="binance-futures",
+    symbol="perpetual-BTC-USDT:USDT",
+    interval="5m",
+    timestamp="exchange",
+    start_date=date(2022, 1, 1),
+    end_date=date(2022, 2, 1),
     preview=True,
 )
 
