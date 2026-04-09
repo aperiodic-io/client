@@ -19,19 +19,20 @@ T = TypeVar("T")
 def run_async(coro: Coroutine[None, None, T]) -> T:
     """Run an async coroutine, handling both regular Python and Jupyter environments.
 
-    Detects whether there's already a running event loop (e.g., in Jupyter)
-    and uses nest_asyncio to allow nested event loops if needed.
+    Detects whether there's already a running event loop (e.g., in Jupyter or
+    pytest-asyncio) and runs the coroutine in a thread-pool worker with its own
+    event loop, avoiding any interaction with the outer loop.
     """
     try:
-        loop = asyncio.get_running_loop()
+        asyncio.get_running_loop()
     except RuntimeError:
         return asyncio.run(coro)
 
-    # Running in an existing event loop (e.g., Jupyter)
-    import nest_asyncio
+    # Running inside an existing event loop — spin up a thread with its own loop.
+    from concurrent.futures import ThreadPoolExecutor
 
-    nest_asyncio.apply()
-    return loop.run_until_complete(coro)
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        return pool.submit(asyncio.run, coro).result()
 
 
 class APIError(Exception):
