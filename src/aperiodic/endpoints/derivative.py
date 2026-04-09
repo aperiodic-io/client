@@ -34,6 +34,7 @@ async def get_derivative_metrics_async(
     show_progress: bool = ...,
     max_concurrent: int = ...,
     output: Literal["polars"] = ...,
+    preview: bool = ...,
 ) -> pl.DataFrame: ...
 
 
@@ -51,6 +52,7 @@ async def get_derivative_metrics_async(
     show_progress: bool = ...,
     max_concurrent: int = ...,
     output: Literal["pandas"] = ...,
+    preview: bool = ...,
 ) -> pd.DataFrame: ...
 
 
@@ -67,6 +69,7 @@ async def get_derivative_metrics_async(
     show_progress: bool = True,
     max_concurrent: int = MAX_CONCURRENT_DOWNLOADS,
     output: OutputFormat = "polars",
+    preview: bool = False,
 ) -> pl.DataFrame | pd.DataFrame:
     """
     Fetch historical derivative metrics data.
@@ -111,6 +114,7 @@ async def get_derivative_metrics_async(
         show_progress=show_progress,
         max_concurrent=max_concurrent,
         output=output,
+        preview=preview,
     )
 
 
@@ -128,6 +132,7 @@ def get_derivative_metrics(
     show_progress: bool = ...,
     max_concurrent: int = ...,
     output: Literal["polars"] = ...,
+    preview: bool = ...,
 ) -> pl.DataFrame: ...
 
 
@@ -145,6 +150,7 @@ def get_derivative_metrics(
     show_progress: bool = ...,
     max_concurrent: int = ...,
     output: Literal["pandas"] = ...,
+    preview: bool = ...,
 ) -> pd.DataFrame: ...
 
 
@@ -161,6 +167,7 @@ def get_derivative_metrics(
     show_progress: bool = True,
     max_concurrent: int = MAX_CONCURRENT_DOWNLOADS,
     output: OutputFormat = "polars",
+    preview: bool = False,
 ) -> pl.DataFrame | pd.DataFrame:
     return run_async(
         get_derivative_metrics_async(
@@ -176,5 +183,6 @@ def get_derivative_metrics(
             show_progress=show_progress,
             max_concurrent=max_concurrent,
             output=output,
+            preview=preview,
         )
     )
