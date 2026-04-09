@@ -193,38 +193,27 @@ asyncio.run(main())
 
 ### Preview (no subscription required)
 
-Any authenticated user — even without a paid subscription — can access a curated slice of data via `preview=True`. The request must match the exact whitelisted exchange, symbol, interval, timestamp, and date range published on [aperiodic.io](https://aperiodic.io).
+Any authenticated user — even without a paid subscription — can access a curated slice of data via `preview=True`. The request must match the exact parameters (exchange, symbol, interval, timestamp, date range) for one of the whitelisted entries.
+
+**Available preview datasets:** [aperiodic.io/catalog#preview](https://aperiodic.io/catalog#preview)
 
 ```python
 from datetime import date
-from aperiodic import get_ohlcv, get_metrics
+from aperiodic import get_ohlcv
 
-# OHLCV preview — free for all logged-in users
-ohlcv_df = get_ohlcv(
+# Copy the exact parameters from https://aperiodic.io/catalog#preview
+df = get_ohlcv(
     api_key="your-api-key",  # sign up free at aperiodic.io
-    exchange="binance-futures",
-    symbol="perpetual-BTC-USDT:USDT",
-    interval="5m",
-    timestamp="exchange",
-    start_date=date(2022, 1, 1),
-    end_date=date(2022, 2, 1),
+    exchange="...",
+    symbol="...",
+    interval="...",
+    timestamp="...",
+    start_date=date(...),
+    end_date=date(...),
     preview=True,
 )
 
-# L2 imbalance preview
-l2_df = get_metrics(
-    api_key="your-api-key",
-    metric="l2_imbalance",
-    exchange="binance-futures",
-    symbol="perpetual-BTC-USDT:USDT",
-    interval="5m",
-    timestamp="exchange",
-    start_date=date(2022, 1, 1),
-    end_date=date(2022, 2, 1),
-    preview=True,
-)
-
-print(ohlcv_df.head())
+print(df.head())
 ```
 
 ## Performance Notes
