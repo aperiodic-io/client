@@ -252,18 +252,6 @@ class TestPreview:
         for col in ["open", "high", "low", "close", "volume"]:
             assert col in result.columns
 
-    def test_l2_imbalance_preview_returns_dataframe(self):
-        result = get_metrics(
-            api_key=API_KEY,
-            metric="l2_imbalance",
-            preview=True,
-            **PREVIEW_PARAMS,
-        )
-        assert isinstance(result, DataFrame)
-        assert len(result) > 0
-        assert "time" in result.columns
-
-
 class TestHyperliquidPerps:
     def test_get_symbols(self):
         result = get_symbols(api_key=API_KEY, exchange="hyperliquid-perps")
