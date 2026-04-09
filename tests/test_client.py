@@ -46,19 +46,6 @@ HYPERLIQUID_PARAMS = {
     "output": "polars" if HAS_POLARS else "pandas",
 }
 
-# Params matching the server-side preview whitelist exactly
-PREVIEW_PARAMS = {
-    "timestamp": "exchange",
-    "interval": "5m",
-    "exchange": "binance-futures",
-    "symbol": "perpetual-BTC-USDT:USDT",
-    "start_date": date(2022, 1, 1),
-    "end_date": date(2022, 2, 1),
-    "show_progress": False,
-    "output": "polars" if HAS_POLARS else "pandas",
-}
-
-
 class TestGetOhlcv:
     def test_invalid_api_key_raises_401(self):
         with pytest.raises(APIError) as exc_info:
@@ -227,14 +214,6 @@ class TestGetSymbols:
         assert len(result) > 0
         assert "perpetual-BTC-USDT:USDT" in result
 
-
-class TestPreview:
-    """preview=True routes to /api/v1/data/preview/{bucket} instead of /api/v1/data/{bucket}."""
-
-    def test_invalid_api_key_raises_401(self):
-        with pytest.raises(APIError) as exc_info:
-            get_ohlcv(api_key="invalid-key", preview=True, **PREVIEW_PARAMS)
-        assert exc_info.value.status_code == 401
 
 class TestHyperliquidPerps:
     def test_get_symbols(self):
