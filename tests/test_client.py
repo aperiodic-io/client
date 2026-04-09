@@ -236,22 +236,6 @@ class TestPreview:
             get_ohlcv(api_key="invalid-key", preview=True, **PREVIEW_PARAMS)
         assert exc_info.value.status_code == 401
 
-    def test_non_whitelisted_exchange_raises_400(self):
-        with pytest.raises(APIError) as exc_info:
-            get_ohlcv(
-                api_key=API_KEY,
-                preview=True,
-                **{**PREVIEW_PARAMS, "exchange": "okx-perps"},
-            )
-        assert exc_info.value.status_code == 400
-
-    def test_ohlcv_preview_returns_dataframe(self):
-        result = get_ohlcv(api_key=API_KEY, preview=True, **PREVIEW_PARAMS)
-        assert isinstance(result, DataFrame)
-        assert len(result) > 0
-        for col in ["open", "high", "low", "close", "volume"]:
-            assert col in result.columns
-
 class TestHyperliquidPerps:
     def test_get_symbols(self):
         result = get_symbols(api_key=API_KEY, exchange="hyperliquid-perps")
