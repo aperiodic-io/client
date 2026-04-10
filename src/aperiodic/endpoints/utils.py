@@ -31,9 +31,13 @@ async def _fetch_presigned_urls(
     start_date: date,
     end_date: date,
     base_url: str,
+    preview: bool = False,
 ) -> AggregateDataResponse:
     """Fetch pre-signed URLs for all files in the date range."""
-    url = f"{base_url}/data/{bucket}"
+    if preview:
+        url = f"{base_url}/data/preview/{bucket}"
+    else:
+        url = f"{base_url}/data/{bucket}"
     params = {
         TIMESTAMP_COL: timestamp,
         "interval": interval,
@@ -60,6 +64,7 @@ async def _get_files_from_bucket_async(
     show_progress: bool = True,
     max_concurrent: int = MAX_CONCURRENT_DOWNLOADS,
     output: OutputFormat = "polars",
+    preview: bool = False,
 ) -> object:
     """
     Async implementation for fetching data from any bucket.
@@ -80,6 +85,7 @@ async def _get_files_from_bucket_async(
         start_date=start_date,
         end_date=end_date,
         base_url=base_url,
+        preview=preview,
     )
 
     files = response["files"]

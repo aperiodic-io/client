@@ -26,6 +26,7 @@ async def get_ohlcv_async(
     show_progress: bool = ...,
     max_concurrent: int = ...,
     output: Literal["polars"] = ...,
+    preview: bool = ...,
 ) -> pl.DataFrame: ...
 
 
@@ -42,6 +43,7 @@ async def get_ohlcv_async(
     show_progress: bool = ...,
     max_concurrent: int = ...,
     output: Literal["pandas"] = ...,
+    preview: bool = ...,
 ) -> pd.DataFrame: ...
 
 
@@ -57,6 +59,7 @@ async def get_ohlcv_async(
     show_progress: bool = True,
     max_concurrent: int = MAX_CONCURRENT_DOWNLOADS,
     output: OutputFormat = "polars",
+    preview: bool = False,
 ) -> pl.DataFrame | pd.DataFrame:
     """
     Fetch historical OHLCV (candlestick) data.
@@ -74,6 +77,8 @@ async def get_ohlcv_async(
         show_progress: Whether to show download progress bar (default: True)
         max_concurrent: Maximum concurrent downloads (default: 10)
         output: DataFrame library to use - 'polars' (default) or 'pandas'
+        preview: If True, route to the preview endpoint (no subscription required,
+                 whitelist parameters only) (default: False)
 
     Returns:
         DataFrame with open, high, low, close, volume columns
@@ -95,6 +100,7 @@ async def get_ohlcv_async(
         show_progress=show_progress,
         max_concurrent=max_concurrent,
         output=output,
+        preview=preview,
     )
 
 
@@ -111,6 +117,7 @@ def get_ohlcv(
     show_progress: bool = ...,
     max_concurrent: int = ...,
     output: Literal["polars"] = ...,
+    preview: bool = ...,
 ) -> pl.DataFrame: ...
 
 
@@ -127,6 +134,7 @@ def get_ohlcv(
     show_progress: bool = ...,
     max_concurrent: int = ...,
     output: Literal["pandas"] = ...,
+    preview: bool = ...,
 ) -> pd.DataFrame: ...
 
 
@@ -142,6 +150,7 @@ def get_ohlcv(
     show_progress: bool = True,
     max_concurrent: int = MAX_CONCURRENT_DOWNLOADS,
     output: OutputFormat = "polars",
+    preview: bool = False,
 ) -> pl.DataFrame | pd.DataFrame:
     return run_async(
         get_ohlcv_async(
@@ -156,6 +165,7 @@ def get_ohlcv(
             show_progress=show_progress,
             max_concurrent=max_concurrent,
             output=output,
+            preview=preview,
         )
     )
 
@@ -173,6 +183,7 @@ async def get_vwap_async(
     show_progress: bool = ...,
     max_concurrent: int = ...,
     output: Literal["polars"] = ...,
+    preview: bool = ...,
 ) -> pl.DataFrame: ...
 
 
@@ -189,6 +200,7 @@ async def get_vwap_async(
     show_progress: bool = ...,
     max_concurrent: int = ...,
     output: Literal["pandas"] = ...,
+    preview: bool = ...,
 ) -> pd.DataFrame: ...
 
 
@@ -204,6 +216,7 @@ async def get_vwap_async(
     show_progress: bool = True,
     max_concurrent: int = MAX_CONCURRENT_DOWNLOADS,
     output: OutputFormat = "polars",
+    preview: bool = False,
 ) -> pl.DataFrame | pd.DataFrame:
     """
     Fetch historical VWAP (volume-weighted average price) data.
@@ -221,6 +234,8 @@ async def get_vwap_async(
         show_progress: Whether to show download progress bar (default: True)
         max_concurrent: Maximum concurrent downloads (default: 10)
         output: DataFrame library to use - 'polars' (default) or 'pandas'
+        preview: If True, route to the preview endpoint (no subscription required,
+                 whitelist parameters only) (default: False)
 
     Returns:
         DataFrame with VWAP columns
@@ -242,6 +257,7 @@ async def get_vwap_async(
         show_progress=show_progress,
         max_concurrent=max_concurrent,
         output=output,
+        preview=preview,
     )
 
 
@@ -258,6 +274,7 @@ def get_vwap(
     show_progress: bool = ...,
     max_concurrent: int = ...,
     output: Literal["polars"] = ...,
+    preview: bool = ...,
 ) -> pl.DataFrame: ...
 
 
@@ -274,6 +291,7 @@ def get_vwap(
     show_progress: bool = ...,
     max_concurrent: int = ...,
     output: Literal["pandas"] = ...,
+    preview: bool = ...,
 ) -> pd.DataFrame: ...
 
 
@@ -289,6 +307,7 @@ def get_vwap(
     show_progress: bool = True,
     max_concurrent: int = MAX_CONCURRENT_DOWNLOADS,
     output: OutputFormat = "polars",
+    preview: bool = False,
 ) -> pl.DataFrame | pd.DataFrame:
     return run_async(
         get_vwap_async(
@@ -303,6 +322,7 @@ def get_vwap(
             show_progress=show_progress,
             max_concurrent=max_concurrent,
             output=output,
+            preview=preview,
         )
     )
 
@@ -320,6 +340,7 @@ async def get_twap_async(
     show_progress: bool = ...,
     max_concurrent: int = ...,
     output: Literal["polars"] = ...,
+    preview: bool = ...,
 ) -> pl.DataFrame: ...
 
 
@@ -336,6 +357,7 @@ async def get_twap_async(
     show_progress: bool = ...,
     max_concurrent: int = ...,
     output: Literal["pandas"] = ...,
+    preview: bool = ...,
 ) -> pd.DataFrame: ...
 
 
@@ -351,6 +373,7 @@ async def get_twap_async(
     show_progress: bool = True,
     max_concurrent: int = MAX_CONCURRENT_DOWNLOADS,
     output: OutputFormat = "polars",
+    preview: bool = False,
 ) -> pl.DataFrame | pd.DataFrame:
     """
     Fetch historical TWAP (time-weighted average price) data.
@@ -368,6 +391,8 @@ async def get_twap_async(
         show_progress: Whether to show download progress bar (default: True)
         max_concurrent: Maximum concurrent downloads (default: 10)
         output: DataFrame library to use - 'polars' (default) or 'pandas'
+        preview: If True, route to the preview endpoint (no subscription required,
+                 whitelist parameters only) (default: False)
 
     Returns:
         DataFrame with TWAP columns
@@ -389,6 +414,7 @@ async def get_twap_async(
         show_progress=show_progress,
         max_concurrent=max_concurrent,
         output=output,
+        preview=preview,
     )
 
 
@@ -405,6 +431,7 @@ def get_twap(
     show_progress: bool = ...,
     max_concurrent: int = ...,
     output: Literal["polars"] = ...,
+    preview: bool = ...,
 ) -> pl.DataFrame: ...
 
 
@@ -421,6 +448,7 @@ def get_twap(
     show_progress: bool = ...,
     max_concurrent: int = ...,
     output: Literal["pandas"] = ...,
+    preview: bool = ...,
 ) -> pd.DataFrame: ...
 
 
@@ -436,6 +464,7 @@ def get_twap(
     show_progress: bool = True,
     max_concurrent: int = MAX_CONCURRENT_DOWNLOADS,
     output: OutputFormat = "polars",
+    preview: bool = False,
 ) -> pl.DataFrame | pd.DataFrame:
     return run_async(
         get_twap_async(
@@ -450,5 +479,6 @@ def get_twap(
             show_progress=show_progress,
             max_concurrent=max_concurrent,
             output=output,
+            preview=preview,
         )
     )

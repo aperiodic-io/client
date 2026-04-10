@@ -46,7 +46,6 @@ HYPERLIQUID_PARAMS = {
     "output": "polars" if HAS_POLARS else "pandas",
 }
 
-
 class TestGetOhlcv:
     def test_invalid_api_key_raises_401(self):
         with pytest.raises(APIError) as exc_info:

@@ -83,6 +83,7 @@ All data endpoints share this shape:
 - `exchange`: `"binance-futures"` | `"okx-perps"` | `"hyperliquid-perps"`.
 - `symbol`: [Atlas](https://github.com/aperiodic-io/atlas)-formatted symbol string (e.g. `"perpetual-BTC-USDT:USDT"`).
 - `start_date` / `end_date`: Inclusive date boundaries.
+- `preview`: `bool = False`. When `True`, routes to the free preview endpoint — no subscription required, but the request must match an exact whitelisted parameter combination (exchange, symbol, interval, timestamp, date range).
 - `show_progress`: show `tqdm` progress bar (default: `True`).
 - `max_concurrent`: max parallel file downloads (default: `10`).
 
@@ -188,6 +189,31 @@ async def main() -> None:
         )
 
 asyncio.run(main())
+```
+
+### Preview (no subscription required)
+
+Any authenticated user — even without a paid subscription — can access a curated slice of data via `preview=True`. The request must match the exact parameters (exchange, symbol, interval, timestamp, date range) for one of the whitelisted entries.
+
+**Available preview datasets:** [aperiodic.io/catalog#preview](https://aperiodic.io/catalog#preview)
+
+```python
+from datetime import date
+from aperiodic import get_ohlcv
+
+# Use the exact parameters listed at https://aperiodic.io/catalog#preview
+df = get_ohlcv(
+    api_key="your-api-key",  # sign up free at aperiodic.io
+    exchange="binance-futures",
+    symbol="perpetual-BTC-USDT:USDT",
+    interval="5m",
+    timestamp="exchange",
+    start_date=date(2025, 5, 1),
+    end_date=date(2025, 5, 31),
+    preview=True,
+)
+
+print(df.head())
 ```
 
 ## Performance Notes
