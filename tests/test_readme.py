@@ -66,8 +66,7 @@ def test_readme_block_compiles(index, source):
     [
         (i, s)
         for i, s in _extract_python_blocks(README)
-        # skip preview blocks until the preview endpoint is deployed in production
-        if "api_key=" in s and "preview=True" not in s
+        if "api_key=" in s
     ],
 )
 def test_readme_block_runs(index, source):
