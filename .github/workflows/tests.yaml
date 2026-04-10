@@ -26,14 +26,6 @@ jobs:
           - polars
           - pandas
           - polars-preinstalled
-        exclude:
-          # polars has no arm64 macOS wheel for Python 3.14 yet
-          - os: macos-latest
-            python-version: "3.14"
-            backend: polars-preinstalled
-          - os: macos-latest
-            python-version: "3.14"
-            backend: polars
 
     runs-on: ${{ matrix.os }}
 

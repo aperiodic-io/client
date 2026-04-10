@@ -208,8 +208,8 @@ df = get_ohlcv(
     symbol="perpetual-BTC-USDT:USDT",
     interval="5m",
     timestamp="exchange",
-    start_date=date(2022, 1, 1),
-    end_date=date(2022, 2, 1),
+    start_date=date(2025, 5, 1),
+    end_date=date(2025, 5, 31),
     preview=True,
 )
 
