@@ -71,10 +71,12 @@ class TestPreview:
             # > 2 years — preview windows are small samples, never multi-year
             (date(2020, 1, 1), date(2022, 6, 1), "2.5-year span"),
             (date(2018, 1, 1), date(2021, 1, 1), "3-year span"),
-            # Recent + > 3 months wide — preview windows are narrow historical slices
-            (date(2025, 1, 1), date(2025, 12, 31), "12-month recent span"),
+            # Recent + > 3 months wide, with no overlap with any whitelist window.
+            # The server clamps overlapping requests, so these must sit entirely
+            # outside the whitelisted window (2025-05-01 → 2025-05-31).
+            (date(2025, 6, 1), date(2025, 12, 31), "7-month span after whitelist window"),
+            (date(2025, 1, 1), date(2025, 4, 30), "4-month span before whitelist window"),
             (date(2024, 1, 1), date(2024, 12, 31), "12-month span (2024)"),
-            (date(2025, 1, 1), date(2025, 6, 30), "6-month recent span"),
         ],
     )
     def test_non_whitelisted_date_range_raises_400(self, start_date, end_date, reason):
