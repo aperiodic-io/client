@@ -97,10 +97,11 @@ class TestFetchJson:
 
 class TestDownloadParquetBytes:
     @pytest.mark.asyncio
-    async def test_returns_bytes_via_proxy(self):
+    async def test_returns_bytes_directly(self):
         import asyncio
 
         raw_bytes = b"parquet-data"
+        presigned_url = "https://ohlcv.aperiodic.io/file.parquet?X-Amz-Signature=abc"
         patcher, fake_pyfetch = _patch_pyodide(
             lambda *a, **kw: FakeResponse(200, raw_bytes)
         )
@@ -110,8 +111,8 @@ class TestDownloadParquetBytes:
             )
 
             year, month, data = await download_parquet_bytes(
-                "https://r2.example.com/file.parquet",
-                {"X-API-KEY": "test"},
+                presigned_url,
+                {},
                 year=2024,
                 month=1,
                 semaphore=asyncio.Semaphore(10),
@@ -120,9 +121,9 @@ class TestDownloadParquetBytes:
         assert year == 2024
         assert month == 1
         assert data == raw_bytes
-        # Should go through the proxy
+        # Should fetch the presigned URL directly — no proxy hop
         call_url = fake_pyfetch.call_args[0][0]
-        assert "/data/proxy" in call_url
+        assert call_url == presigned_url
 
     @pytest.mark.asyncio
     async def test_raises_download_error_after_retries(self):
@@ -139,8 +140,8 @@ class TestDownloadParquetBytes:
 
             with pytest.raises(DownloadError):
                 await download_parquet_bytes(
-                    "https://r2.example.com/file.parquet",
-                    {"X-API-KEY": "test"},
+                    "https://ohlcv.aperiodic.io/file.parquet?X-Amz-Signature=abc",
+                    {},
                     year=2024,
                     month=1,
                     semaphore=asyncio.Semaphore(10),
