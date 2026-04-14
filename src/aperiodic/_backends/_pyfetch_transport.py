@@ -1,8 +1,8 @@
 """HTTP transport using Pyodide's pyfetch (for WASM/marimo environments).
 
 In Pyodide, httpx is not available. pyfetch is the built-in async HTTP client.
-Parquet downloads go through a CORS proxy since presigned R2 URLs don't
-support cross-origin requests from the browser.
+Parquet files are downloaded directly from R2 presigned URLs — CORS headers
+on the R2 buckets allow cross-origin GET requests from the browser.
 """
 
 from __future__ import annotations
@@ -88,31 +88,23 @@ async def download_parquet_bytes(
     max_retries: int = 3,
     backoff_base: float = 1.0,
 ) -> tuple[int, int, bytes]:
-    """Download a parquet file via the CORS proxy.
+    """Download a parquet file directly from a presigned R2 URL.
 
-    In Pyodide, presigned R2 URLs need CORS proxying. The proxy endpoint
-    is derived from the base_url set in config.
+    Presigned URLs carry auth in their query parameters (X-Amz-*), so no
+    additional headers are required. CORS is configured on the R2 buckets to
+    allow GET requests from the browser.
 
     Returns:
         Tuple of (year, month, raw_bytes)
     """
     from pyodide.http import pyfetch  # type: ignore[import-not-found]
 
-    # Route through the CORS proxy
-    from ..config import DEFAULT_BASE_URL
-
-    base_url = DEFAULT_BASE_URL.rstrip("/")
-    # DEFAULT_BASE_URL already includes /api/v1, so just append /data/proxy
-    proxy_url = f"{base_url}/data/proxy?url={quote(url)}"
-
     async with semaphore:
         last_exception: Exception | None = None
 
         for attempt in range(max_retries + 1):
             try:
-                resp = await pyfetch(
-                    proxy_url, headers=_to_js_headers(headers)
-                )
+                resp = await pyfetch(url, method="GET")
                 if resp.status != 200:
                     text = await resp.string()
                     raise RuntimeError(
