@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from importlib.util import find_spec
 from typing import TYPE_CHECKING, Any, TypeVar
 from urllib.parse import quote
 
@@ -16,6 +17,13 @@ if TYPE_CHECKING:
     from collections.abc import Coroutine
 
 T = TypeVar("T")
+
+
+# Detect pyodide.ffi without importing it — `find_spec` is the project-wide
+# convention for "is this optional dependency installed?" (see _compat.py:
+# HAS_POLARS / HAS_PYARROW). It avoids a try/except ImportError dance and,
+# unlike a real import, it does not execute the module as a side-effect.
+_HAS_PYODIDE_FFI = find_spec("pyodide.ffi") is not None
 
 
 def run_async(coro: Coroutine[None, None, T]) -> T:
@@ -34,19 +42,19 @@ def run_async(coro: Coroutine[None, None, T]) -> T:
     runtime, so users can keep calling ``get_ohlcv(...)`` etc. without
     needing top-level ``await``.
 
-    If ``run_sync`` isn't available (older Pyodide, or JSPI disabled in the
-    embedding runtime), raise a clear error pointing users to the
-    ``_async`` counterparts rather than silently returning a ``Task``.
+    If ``pyodide.ffi`` isn't available (older Pyodide, or non-Pyodide
+    runtime), raise a clear error pointing users to the ``_async``
+    counterparts rather than silently returning a ``Task``.
     """
-    try:
-        from pyodide.ffi import run_sync  # type: ignore[import-not-found]
-    except ImportError as exc:  # pragma: no cover - depends on runtime
+    if not _HAS_PYODIDE_FFI:
         raise RuntimeError(
             "Synchronous Aperiodic client calls require Pyodide ≥ 0.26 with "
             "JavaScript Promise Integration (stack switching). Use the "
             "_async variants (e.g. `await get_ohlcv_async(...)`) in this "
             "runtime."
-        ) from exc
+        )
+
+    from pyodide.ffi import run_sync  # type: ignore[import-not-found]
 
     return run_sync(coro)
 
