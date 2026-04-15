@@ -19,14 +19,36 @@ T = TypeVar("T")
 
 
 def run_async(coro: Coroutine[None, None, T]) -> T:
-    """Run an async coroutine in a Pyodide/WASM environment.
+    """Run an async coroutine synchronously in a Pyodide/WASM environment.
 
-    In Pyodide there is always a running event loop. We use
-    webloop's run_until_complete directly — nest_asyncio is not
-    available and not needed.
+    Pyodide's event loop is already running when our code executes (the
+    browser owns the event loop), so we can't call ``loop.run_until_complete``
+    to block on a coroutine — it returns a ``Task`` without actually running
+    it, and the caller then ends up holding a pending future instead of the
+    awaited result.
+
+    We rely on ``pyodide.ffi.run_sync`` (Pyodide ≥ 0.26) which uses
+    JavaScript Promise Integration / stack switching to block the current
+    Python frame until the coroutine is done — the same mechanism marimo
+    itself uses to offer a synchronous UI. This is enabled in marimo's WASM
+    runtime, so users can keep calling ``get_ohlcv(...)`` etc. without
+    needing top-level ``await``.
+
+    If ``run_sync`` isn't available (older Pyodide, or JSPI disabled in the
+    embedding runtime), raise a clear error pointing users to the
+    ``_async`` counterparts rather than silently returning a ``Task``.
     """
-    loop = asyncio.get_event_loop()
-    return loop.run_until_complete(coro)
+    try:
+        from pyodide.ffi import run_sync  # type: ignore[import-not-found]
+    except ImportError as exc:  # pragma: no cover - depends on runtime
+        raise RuntimeError(
+            "Synchronous Aperiodic client calls require Pyodide ≥ 0.26 with "
+            "JavaScript Promise Integration (stack switching). Use the "
+            "_async variants (e.g. `await get_ohlcv_async(...)`) in this "
+            "runtime."
+        ) from exc
+
+    return run_sync(coro)
 
 
 class APIError(Exception):
