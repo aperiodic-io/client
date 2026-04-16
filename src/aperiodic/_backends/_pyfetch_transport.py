@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import asyncio
 import json
+import sys
+from importlib.util import find_spec
 from typing import TYPE_CHECKING, Any, TypeVar
 from urllib.parse import quote
 
@@ -18,15 +20,55 @@ if TYPE_CHECKING:
 T = TypeVar("T")
 
 
-def run_async(coro: Coroutine[None, None, T]) -> T:
-    """Run an async coroutine in a Pyodide/WASM environment.
+def _has_pyodide_ffi() -> bool:
+    """Detect ``pyodide.ffi`` without importing it or crashing on test mocks.
 
-    In Pyodide there is always a running event loop. We use
-    webloop's run_until_complete directly — nest_asyncio is not
-    available and not needed.
+    ``importlib.util.find_spec("pyodide.ffi")`` is the project-wide
+    convention for "is this optional dep installed?" (see ``_compat.py``:
+    ``HAS_POLARS`` / ``HAS_PYARROW``). But our tests use
+    ``mock.patch.dict("sys.modules", {"pyodide.ffi": MagicMock()})`` to
+    mock Pyodide APIs, and ``find_spec`` trips over the MagicMock's lack
+    of a real ``__spec__`` with ``ValueError: pyodide.ffi.__spec__ is not
+    set``. So: probe ``sys.modules`` first (covers both real Pyodide
+    imports and the test-mock case), and only fall through to
+    ``find_spec`` when the module isn't already in ``sys.modules``.
     """
-    loop = asyncio.get_event_loop()
-    return loop.run_until_complete(coro)
+    if "pyodide.ffi" in sys.modules:
+        return True
+    return find_spec("pyodide.ffi") is not None
+
+
+def run_async(coro: Coroutine[None, None, T]) -> T:
+    """Run an async coroutine synchronously in a Pyodide/WASM environment.
+
+    Pyodide's event loop is already running when our code executes (the
+    browser owns the event loop), so we can't call ``loop.run_until_complete``
+    to block on a coroutine — it returns a ``Task`` without actually running
+    it, and the caller then ends up holding a pending future instead of the
+    awaited result.
+
+    We rely on ``pyodide.ffi.run_sync`` (Pyodide ≥ 0.26) which uses
+    JavaScript Promise Integration / stack switching to block the current
+    Python frame until the coroutine is done — the same mechanism marimo
+    itself uses to offer a synchronous UI. This is enabled in marimo's WASM
+    runtime, so users can keep calling ``get_ohlcv(...)`` etc. without
+    needing top-level ``await``.
+
+    If ``pyodide.ffi`` isn't available (older Pyodide, or non-Pyodide
+    runtime), raise a clear error pointing users to the ``_async``
+    counterparts rather than silently returning a ``Task``.
+    """
+    if not _has_pyodide_ffi():
+        raise RuntimeError(
+            "Synchronous Aperiodic client calls require Pyodide ≥ 0.26 with "
+            "JavaScript Promise Integration (stack switching). Use the "
+            "_async variants (e.g. `await get_ohlcv_async(...)`) in this "
+            "runtime."
+        )
+
+    from pyodide.ffi import run_sync  # type: ignore[import-not-found]
+
+    return run_sync(coro)
 
 
 class APIError(Exception):
