@@ -20,10 +20,8 @@ def _purge_polars_from_sys_modules() -> None:
     """
     for mod in list(sys.modules):
         if (
-            mod == "polars"
+            mod in {"polars", "aperiodic._backends._polars", "aperiodic._compat"}
             or mod.startswith("polars.")
-            or mod == "aperiodic._backends._polars"
-            or mod == "aperiodic._compat"
         ):
             sys.modules.pop(mod, None)
 
