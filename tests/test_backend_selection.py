@@ -2,28 +2,10 @@ from __future__ import annotations
 
 import builtins
 import importlib
+import importlib.util
 import sys
 
 import pytest
-
-
-def _purge_polars_from_sys_modules() -> None:
-    """Drop every cached polars / polars-backed module from ``sys.modules``.
-
-    ``importlib.import_module`` returns the cached entry without re-executing
-    the module body, so if ``aperiodic._backends._polars`` was imported
-    earlier (e.g. in the ``polars-preinstalled`` CI job, where real polars
-    is available), its top-level ``import polars as pl`` is already done
-    and our ``__import__`` monkeypatches never see it. Evict those entries
-    first so the next ``import_module`` re-runs the module body under the
-    patched import hook.
-    """
-    for mod in list(sys.modules):
-        if (
-            mod in {"polars", "aperiodic._backends._polars", "aperiodic._compat"}
-            or mod.startswith("polars.")
-        ):
-            sys.modules.pop(mod, None)
 
 
 def test_compat_import_does_not_require_polars(monkeypatch):
@@ -36,7 +18,7 @@ def test_compat_import_does_not_require_polars(monkeypatch):
         return real_import(name, *args, **kwargs)
 
     monkeypatch.setattr(builtins, "__import__", guarded_import)
-    _purge_polars_from_sys_modules()
+    sys.modules.pop("aperiodic._compat", None)
 
     compat = importlib.import_module("aperiodic._compat")
 
@@ -47,23 +29,26 @@ def test_compat_import_does_not_require_polars(monkeypatch):
         assert pandas_backend.__name__.endswith("._pandas")
 
 
+def _fake_import_polars_backend():
+    """Stand-in for ``_import_polars_backend`` — raises the same
+    ``ImportError`` the real helper would in an env where polars isn't
+    installed, without relying on ``__import__`` monkeypatches or
+    ``sys.modules`` purges (both of which are unreliable once something
+    else in the test session has already imported polars or the
+    polars-backed module — e.g. the ``polars-preinstalled`` CI job)."""
+    raise ImportError("simulated polars import failure")
+
+
 def test_polars_request_raises_on_cpython_without_polars(monkeypatch):
     """On CPython, `output='polars'` with polars missing still raises loudly —
     the install hint is the only useful feedback the user can act on."""
-    real_import = builtins.__import__
+    from aperiodic import _compat
 
-    def guarded_import(name: str, *args, **kwargs):
-        if name == "polars" or name.startswith("polars."):
-            raise ImportError("simulated polars import failure")
-        return real_import(name, *args, **kwargs)
-
-    monkeypatch.setattr(builtins, "__import__", guarded_import)
+    monkeypatch.setattr(_compat, "_import_polars_backend", _fake_import_polars_backend)
     monkeypatch.setattr(sys, "platform", "linux")
-    _purge_polars_from_sys_modules()
-    compat = importlib.import_module("aperiodic._compat")
 
     with pytest.raises(ImportError, match="polars is not installed"):
-        compat.get_backend_module("polars")
+        _compat.get_backend_module("polars")
 
 
 def test_polars_request_falls_back_to_pandas_in_pyodide(monkeypatch):
@@ -71,20 +56,13 @@ def test_polars_request_falls_back_to_pandas_in_pyodide(monkeypatch):
     installed — its Rust bindings don't compile for wasm32. When a caller
     asks for polars output there, silently fall back to pandas so notebooks
     with the default `output='polars'` just work in the browser."""
-    real_import = builtins.__import__
+    from aperiodic import _compat
 
-    def guarded_import(name: str, *args, **kwargs):
-        if name == "polars" or name.startswith("polars."):
-            raise ImportError("simulated polars import failure")
-        return real_import(name, *args, **kwargs)
-
-    if importlib.util.find_spec("pyarrow") is None:
+    if not _compat.HAS_PYARROW:
         pytest.skip("pyarrow is required for the pandas fallback")
 
-    monkeypatch.setattr(builtins, "__import__", guarded_import)
+    monkeypatch.setattr(_compat, "_import_polars_backend", _fake_import_polars_backend)
     monkeypatch.setattr(sys, "platform", "emscripten")
-    _purge_polars_from_sys_modules()
-    compat = importlib.import_module("aperiodic._compat")
 
-    backend = compat.get_backend_module("polars")
+    backend = _compat.get_backend_module("polars")
     assert backend.__name__.endswith("._pandas")
