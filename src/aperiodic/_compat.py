@@ -115,11 +115,25 @@ else:
 
 
 def get_backend_module(output: str) -> Any:
-    """Return the backend module (_polars or _pandas) for the given output format."""
+    """Return the backend module (_polars or _pandas) for the given output format.
+
+    In Pyodide/WASM (``sys.platform == "emscripten"``), polars can never be
+    installed — its Rust bindings don't compile for Pyodide's wasm32 target.
+    If the caller asks for ``output="polars"`` there (including via the
+    default on every ``get_ohlcv`` / ``get_metrics`` / … call), silently
+    fall back to the pandas backend so notebooks written for CPython
+    execute unchanged in the browser. On a real CPython interpreter, an
+    explicit ``output="polars"`` with polars uninstalled still raises
+    cleanly — the install hint is still useful there.
+    """
+    import sys
+
     if output == "polars":
         try:
             return _import_polars_backend()
         except ImportError as exc:
+            if sys.platform == "emscripten" and HAS_PYARROW:
+                return _import_pandas_backend()
             raise ImportError(
                 "polars is not installed. Install with: pip install aperiodic[polars]"
             ) from exc
