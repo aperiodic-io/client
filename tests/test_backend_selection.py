@@ -7,17 +7,38 @@ import sys
 import pytest
 
 
+def _purge_polars_from_sys_modules() -> None:
+    """Drop every cached polars / polars-backed module from ``sys.modules``.
+
+    ``importlib.import_module`` returns the cached entry without re-executing
+    the module body, so if ``aperiodic._backends._polars`` was imported
+    earlier (e.g. in the ``polars-preinstalled`` CI job, where real polars
+    is available), its top-level ``import polars as pl`` is already done
+    and our ``__import__`` monkeypatches never see it. Evict those entries
+    first so the next ``import_module`` re-runs the module body under the
+    patched import hook.
+    """
+    for mod in list(sys.modules):
+        if (
+            mod == "polars"
+            or mod.startswith("polars.")
+            or mod == "aperiodic._backends._polars"
+            or mod == "aperiodic._compat"
+        ):
+            sys.modules.pop(mod, None)
+
+
 def test_compat_import_does_not_require_polars(monkeypatch):
     """Importing _compat should still work when polars import fails."""
     real_import = builtins.__import__
 
     def guarded_import(name: str, *args, **kwargs):
-        if name == "polars":
+        if name == "polars" or name.startswith("polars."):
             raise ImportError("simulated polars import failure")
         return real_import(name, *args, **kwargs)
 
     monkeypatch.setattr(builtins, "__import__", guarded_import)
-    sys.modules.pop("aperiodic._compat", None)
+    _purge_polars_from_sys_modules()
 
     compat = importlib.import_module("aperiodic._compat")
 
@@ -40,7 +61,7 @@ def test_polars_request_raises_on_cpython_without_polars(monkeypatch):
 
     monkeypatch.setattr(builtins, "__import__", guarded_import)
     monkeypatch.setattr(sys, "platform", "linux")
-    sys.modules.pop("aperiodic._compat", None)
+    _purge_polars_from_sys_modules()
     compat = importlib.import_module("aperiodic._compat")
 
     with pytest.raises(ImportError, match="polars is not installed"):
@@ -64,7 +85,7 @@ def test_polars_request_falls_back_to_pandas_in_pyodide(monkeypatch):
 
     monkeypatch.setattr(builtins, "__import__", guarded_import)
     monkeypatch.setattr(sys, "platform", "emscripten")
-    sys.modules.pop("aperiodic._compat", None)
+    _purge_polars_from_sys_modules()
     compat = importlib.import_module("aperiodic._compat")
 
     backend = compat.get_backend_module("polars")
