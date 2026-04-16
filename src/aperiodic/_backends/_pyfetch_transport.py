@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import sys
 from importlib.util import find_spec
 from typing import TYPE_CHECKING, Any, TypeVar
 from urllib.parse import quote
@@ -19,11 +20,22 @@ if TYPE_CHECKING:
 T = TypeVar("T")
 
 
-# Detect pyodide.ffi without importing it — `find_spec` is the project-wide
-# convention for "is this optional dependency installed?" (see _compat.py:
-# HAS_POLARS / HAS_PYARROW). It avoids a try/except ImportError dance and,
-# unlike a real import, it does not execute the module as a side-effect.
-_HAS_PYODIDE_FFI = find_spec("pyodide.ffi") is not None
+def _has_pyodide_ffi() -> bool:
+    """Detect ``pyodide.ffi`` without importing it or crashing on test mocks.
+
+    ``importlib.util.find_spec("pyodide.ffi")`` is the project-wide
+    convention for "is this optional dep installed?" (see ``_compat.py``:
+    ``HAS_POLARS`` / ``HAS_PYARROW``). But our tests use
+    ``mock.patch.dict("sys.modules", {"pyodide.ffi": MagicMock()})`` to
+    mock Pyodide APIs, and ``find_spec`` trips over the MagicMock's lack
+    of a real ``__spec__`` with ``ValueError: pyodide.ffi.__spec__ is not
+    set``. So: probe ``sys.modules`` first (covers both real Pyodide
+    imports and the test-mock case), and only fall through to
+    ``find_spec`` when the module isn't already in ``sys.modules``.
+    """
+    if "pyodide.ffi" in sys.modules:
+        return True
+    return find_spec("pyodide.ffi") is not None
 
 
 def run_async(coro: Coroutine[None, None, T]) -> T:
@@ -46,7 +58,7 @@ def run_async(coro: Coroutine[None, None, T]) -> T:
     runtime), raise a clear error pointing users to the ``_async``
     counterparts rather than silently returning a ``Task``.
     """
-    if not _HAS_PYODIDE_FFI:
+    if not _has_pyodide_ffi():
         raise RuntimeError(
             "Synchronous Aperiodic client calls require Pyodide ≥ 0.26 with "
             "JavaScript Promise Integration (stack switching). Use the "
