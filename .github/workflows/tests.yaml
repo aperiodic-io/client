@@ -64,3 +64,40 @@ jobs:
         run: pytest . -s --cov --durations 0
 
       - uses: codecov/codecov-action@v3
+
+  # ---------------------------------------------------------------------------
+  # Pyodide/WASM end-to-end smoke test.
+  #
+  # Boots a real Pyodide 0.27.7 inside Node.js, installs our freshly-built
+  # wheel via micropip, and verifies the sync API surface works in the
+  # marimo-WASM runtime without going through a PyPI release. See
+  # tests/pyodide_smoke/smoke.js for the checks.
+  # ---------------------------------------------------------------------------
+  pyodide-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tests/pyodide_smoke/package-lock.json
+
+      - name: build wheel
+        run: |
+          python -m pip install --upgrade pip hatch
+          hatch build -t wheel
+          ls -la dist/
+
+      - name: install Pyodide (Node)
+        working-directory: tests/pyodide_smoke
+        run: npm ci
+
+      - name: run Pyodide smoke test
+        working-directory: tests/pyodide_smoke
+        run: node --experimental-wasm-jspi smoke.js

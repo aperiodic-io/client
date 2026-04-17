@@ -1,0 +1,11 @@
+{
+  "name": "aperiodic-pyodide-smoke",
+  "private": true,
+  "description": "Pyodide-in-Node.js smoke test for the aperiodic client sync wrappers. See smoke.js.",
+  "scripts": {
+    "test": "node --experimental-wasm-jspi smoke.js"
+  },
+  "dependencies": {
+    "pyodide": "0.27.7"
+  }
+}
