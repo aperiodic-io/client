@@ -72,38 +72,8 @@ jobs:
   # wheel via micropip, and verifies the sync API surface works in the
   # marimo-WASM runtime without going through a PyPI release. See
   # tests/pyodide_smoke/smoke.js for the checks.
-  #
-  # Runs only when the Pyodide-relevant surface changed (the pyfetch
-  # transport, the backend selector, the sync wrappers, the smoke test
-  # itself, or the CI workflow) — otherwise a no-op so every push doesn't
-  # pay a ~2-min Pyodide boot just to rebuild the wheel again.
   # ---------------------------------------------------------------------------
-  detect-pyodide-relevant-changes:
-    runs-on: ubuntu-latest
-    outputs:
-      should-run: ${{ steps.filter.outputs.pyodide }}
-    steps:
-      - uses: actions/checkout@v3
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            pyodide:
-              - 'src/aperiodic/_backends/_pyfetch_transport.py'
-              - 'src/aperiodic/_backends/_pandas.py'
-              - 'src/aperiodic/_compat.py'
-              - 'src/aperiodic/client.py'
-              - 'src/aperiodic/endpoints/**'
-              - 'pyproject.toml'
-              - 'tests/pyodide_smoke/**'
-              - '.github/workflows/tests.yaml'
-
   pyodide-smoke:
-    needs: detect-pyodide-relevant-changes
-    # Always run on workflow_dispatch so we can sanity-check on demand.
-    if: |
-      needs.detect-pyodide-relevant-changes.outputs.should-run == 'true'
-      || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -126,12 +96,8 @@ jobs:
 
       - name: install Pyodide (Node)
         working-directory: tests/pyodide_smoke
-        run: npm install
+        run: npm ci
 
       - name: run Pyodide smoke test
         working-directory: tests/pyodide_smoke
-        # `--experimental-wasm-jspi` enables the JavaScript Promise
-        # Integration that pyodide.ffi.run_sync relies on. Real browsers
-        # ship JSPI enabled (Chrome 123+ / Safari 18.2+) so end-users
-        # never need a flag; Node just hasn't stabilised it yet.
         run: node --experimental-wasm-jspi smoke.js
