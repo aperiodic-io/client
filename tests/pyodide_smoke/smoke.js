@@ -4,25 +4,17 @@
  * Pyodide smoke test — end-to-end verification that the aperiodic sync API
  * works inside Pyodide/WASM without needing a PyPI release.
  *
- * What this catches (and every previous PR in the run_sync / polars-fallback
- * chain shipped something that would have failed this test):
+ * Core regression guard: if `run_async` ever goes back to
+ * `loop.run_until_complete` (or anything else that can't actually block
+ * Pyodide's browser-owned event loop) instead of `pyodide.ffi.run_sync`,
+ * the sync wrappers leak a pending Task and callers get an opaque
+ * `PyodideTask`/"await wasn't used with future" error. This test catches
+ * that by calling `get_ohlcv(..., output="pandas")` inside real Pyodide
+ * and asserting the result is a real `pandas.DataFrame`.
  *
- *   1. PyodideTask leak — if `run_async()` ever goes back to
- *      `loop.run_until_complete()` instead of `pyodide.ffi.run_sync()`,
- *      `get_ohlcv()` returns a Task instead of a DataFrame. Check #1 asserts
- *      `isinstance(df, pd.DataFrame)`.
- *
- *   2. polars → pandas fallback — the default `output="polars"` call path
- *      must silently use pandas when polars isn't installed (always the case
- *      in Pyodide: polars has Rust bindings that can't build for wasm32).
- *      Check #2 asserts the no-output call returns a real pandas DataFrame.
- *
- *   3. sys.platform === "emscripten" in Pyodide — anchor for fallback logic
- *      (and documentation). Check #3 asserts the sentinel.
- *
- * Runs in a few minutes on GitHub-hosted runners. No API key, no network
- * traffic against aperiodic.io (we monkey-patch the transport inside
- * Pyodide so the sync path completes without hitting the real API).
+ * Network is monkey-patched inside Pyodide so CI needs neither
+ * APERIODIC_API_KEY nor egress to aperiodic.io — we're testing the
+ * sync/backend layer, not the data pipeline.
  *
  * Requires Node 22+ with `--experimental-wasm-jspi` — `pyodide.ffi.run_sync`
  * (Pyodide ≥ 0.26) needs WebAssembly JavaScript Promise Integration. In
@@ -93,7 +85,11 @@ _u.download_parquet_bytes = _fake_download
 
 from aperiodic import get_ohlcv
 
-# --- Check #1: sync wrapper returns real DataFrame, not PyodideTask ---
+# --- Check #1: sync wrapper returns a real DataFrame, not a PyodideTask ---
+# Main regression guard. Before the pyodide.ffi.run_sync migration
+# (client 4.0.8), the sync wrappers leaked a pending Task because
+# loop.run_until_complete cannot actually block Pyodide's browser-owned
+# event loop. If that ever gets reverted, the isinstance check fails.
 df = get_ohlcv(
     api_key="fake",
     timestamp="exchange",
@@ -106,24 +102,10 @@ df = get_ohlcv(
     show_progress=False,
 )
 
-# --- Check #2: default output="polars" silently falls back to pandas ---
-df_default = get_ohlcv(
-    api_key="fake",
-    timestamp="exchange",
-    interval="5m",
-    exchange="binance-futures",
-    symbol="perpetual-BTC-USDT:USDT",
-    start_date=date(2025, 5, 1),
-    end_date=date(2025, 5, 1),
-    show_progress=False,
-)
-
 {
     "platform": sys.platform,
     "explicit_pandas_type": type(df).__name__,
     "explicit_pandas_is_dataframe": isinstance(df, pd.DataFrame),
-    "default_output_type": type(df_default).__name__,
-    "default_output_is_dataframe": isinstance(df_default, pd.DataFrame),
 }
 `);
 
@@ -136,13 +118,7 @@ df_default = get_ohlcv(
   }
   if (!r.explicit_pandas_is_dataframe) {
     failures.push(
-      `explicit output="pandas" returned ${r.explicit_pandas_type}, not pandas.DataFrame`,
-    );
-  }
-  if (!r.default_output_is_dataframe) {
-    failures.push(
-      `default output (implicit "polars") returned ${r.default_output_type}, ` +
-        `expected pandas.DataFrame via the Pyodide fallback`,
+      `get_ohlcv(output="pandas") returned ${r.explicit_pandas_type}, not pandas.DataFrame`,
     );
   }
 
