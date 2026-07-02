@@ -15,7 +15,8 @@ if TYPE_CHECKING:
 
 @overload
 async def get_ohlcv_async(
-    api_key: str,
+    api_key: str | None = None,
+    *,
     timestamp: TimestampType,
     interval: Interval,
     exchange: Exchange,
@@ -32,7 +33,8 @@ async def get_ohlcv_async(
 
 @overload
 async def get_ohlcv_async(
-    api_key: str,
+    api_key: str | None = None,
+    *,
     timestamp: TimestampType,
     interval: Interval,
     exchange: Exchange,
@@ -48,7 +50,8 @@ async def get_ohlcv_async(
 
 
 async def get_ohlcv_async(
-    api_key: str,
+    api_key: str | None = None,
+    *,
     timestamp: TimestampType,
     interval: Interval,
     exchange: Exchange,
@@ -65,7 +68,8 @@ async def get_ohlcv_async(
     Fetch historical OHLCV (candlestick) data.
 
     Args:
-        api_key: Your Aperiodic API key
+        api_key: Your Aperiodic API key. Optional when preview=True — the
+            shared public demo key is used automatically
         timestamp: Timestamp source - 'exchange' for exchange-reported time,
                    'true' for actual arrival time at Aperiodic servers
         interval: Aggregation interval ('1m', '5m', '15m', '30m', '1h', '4h', '1d')
@@ -106,7 +110,8 @@ async def get_ohlcv_async(
 
 @overload
 def get_ohlcv(
-    api_key: str,
+    api_key: str | None = None,
+    *,
     timestamp: TimestampType,
     interval: Interval,
     exchange: Exchange,
@@ -123,7 +128,8 @@ def get_ohlcv(
 
 @overload
 def get_ohlcv(
-    api_key: str,
+    api_key: str | None = None,
+    *,
     timestamp: TimestampType,
     interval: Interval,
     exchange: Exchange,
@@ -139,7 +145,8 @@ def get_ohlcv(
 
 
 def get_ohlcv(
-    api_key: str,
+    api_key: str | None = None,
+    *,
     timestamp: TimestampType,
     interval: Interval,
     exchange: Exchange,
@@ -172,7 +179,8 @@ def get_ohlcv(
 
 @overload
 async def get_vwap_async(
-    api_key: str,
+    api_key: str | None = None,
+    *,
     timestamp: TimestampType,
     interval: Interval,
     exchange: Exchange,
@@ -189,7 +197,8 @@ async def get_vwap_async(
 
 @overload
 async def get_vwap_async(
-    api_key: str,
+    api_key: str | None = None,
+    *,
     timestamp: TimestampType,
     interval: Interval,
     exchange: Exchange,
@@ -205,7 +214,8 @@ async def get_vwap_async(
 
 
 async def get_vwap_async(
-    api_key: str,
+    api_key: str | None = None,
+    *,
     timestamp: TimestampType,
     interval: Interval,
     exchange: Exchange,
@@ -222,7 +232,8 @@ async def get_vwap_async(
     Fetch historical VWAP (volume-weighted average price) data.
 
     Args:
-        api_key: Your Aperiodic API key
+        api_key: Your Aperiodic API key. Optional when preview=True — the
+            shared public demo key is used automatically
         timestamp: Timestamp source - 'exchange' for exchange-reported time,
                    'true' for actual arrival time at Aperiodic servers
         interval: Aggregation interval ('1m', '5m', '15m', '30m', '1h', '4h', '1d')
@@ -263,7 +274,8 @@ async def get_vwap_async(
 
 @overload
 def get_vwap(
-    api_key: str,
+    api_key: str | None = None,
+    *,
     timestamp: TimestampType,
     interval: Interval,
     exchange: Exchange,
@@ -280,7 +292,8 @@ def get_vwap(
 
 @overload
 def get_vwap(
-    api_key: str,
+    api_key: str | None = None,
+    *,
     timestamp: TimestampType,
     interval: Interval,
     exchange: Exchange,
@@ -296,7 +309,8 @@ def get_vwap(
 
 
 def get_vwap(
-    api_key: str,
+    api_key: str | None = None,
+    *,
     timestamp: TimestampType,
     interval: Interval,
     exchange: Exchange,
@@ -329,7 +343,8 @@ def get_vwap(
 
 @overload
 async def get_twap_async(
-    api_key: str,
+    api_key: str | None = None,
+    *,
     timestamp: TimestampType,
     interval: Interval,
     exchange: Exchange,
@@ -346,7 +361,8 @@ async def get_twap_async(
 
 @overload
 async def get_twap_async(
-    api_key: str,
+    api_key: str | None = None,
+    *,
     timestamp: TimestampType,
     interval: Interval,
     exchange: Exchange,
@@ -362,7 +378,8 @@ async def get_twap_async(
 
 
 async def get_twap_async(
-    api_key: str,
+    api_key: str | None = None,
+    *,
     timestamp: TimestampType,
     interval: Interval,
     exchange: Exchange,
@@ -379,7 +396,8 @@ async def get_twap_async(
     Fetch historical TWAP (time-weighted average price) data.
 
     Args:
-        api_key: Your Aperiodic API key
+        api_key: Your Aperiodic API key. Optional when preview=True — the
+            shared public demo key is used automatically
         timestamp: Timestamp source - 'exchange' for exchange-reported time,
                    'true' for actual arrival time at Aperiodic servers
         interval: Aggregation interval ('1m', '5m', '15m', '30m', '1h', '4h', '1d')
@@ -420,7 +438,8 @@ async def get_twap_async(
 
 @overload
 def get_twap(
-    api_key: str,
+    api_key: str | None = None,
+    *,
     timestamp: TimestampType,
     interval: Interval,
     exchange: Exchange,
@@ -437,7 +456,8 @@ def get_twap(
 
 @overload
 def get_twap(
-    api_key: str,
+    api_key: str | None = None,
+    *,
     timestamp: TimestampType,
     interval: Interval,
     exchange: Exchange,
@@ -453,7 +473,8 @@ def get_twap(
 
 
 def get_twap(
-    api_key: str,
+    api_key: str | None = None,
+    *,
     timestamp: TimestampType,
     interval: Interval,
     exchange: Exchange,

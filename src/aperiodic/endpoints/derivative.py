@@ -22,7 +22,8 @@ if TYPE_CHECKING:
 
 @overload
 async def get_derivative_metrics_async(
-    api_key: str,
+    api_key: str | None = None,
+    *,
     metric: DerivativeMetric,
     timestamp: TimestampType,
     interval: Interval,
@@ -40,7 +41,8 @@ async def get_derivative_metrics_async(
 
 @overload
 async def get_derivative_metrics_async(
-    api_key: str,
+    api_key: str | None = None,
+    *,
     metric: DerivativeMetric,
     timestamp: TimestampType,
     interval: Interval,
@@ -57,7 +59,8 @@ async def get_derivative_metrics_async(
 
 
 async def get_derivative_metrics_async(
-    api_key: str,
+    api_key: str | None = None,
+    *,
     metric: DerivativeMetric,
     timestamp: TimestampType,
     interval: Interval,
@@ -81,7 +84,8 @@ async def get_derivative_metrics_async(
         - 'derivative_price': Basic data of the derivative contract
 
     Args:
-        api_key: Your Aperiodic API key
+        api_key: Your Aperiodic API key. Optional when preview=True — the
+            shared public demo key is used automatically
         metric: Which trade metric to fetch
         timestamp: Timestamp source - 'exchange' or 'true'
         interval: Aggregation interval ('1m', '5m', '15m', '30m', '1h', '4h', '1d')
@@ -120,7 +124,8 @@ async def get_derivative_metrics_async(
 
 @overload
 def get_derivative_metrics(
-    api_key: str,
+    api_key: str | None = None,
+    *,
     metric: TradeMetric,
     timestamp: TimestampType,
     interval: Interval,
@@ -138,7 +143,8 @@ def get_derivative_metrics(
 
 @overload
 def get_derivative_metrics(
-    api_key: str,
+    api_key: str | None = None,
+    *,
     metric: TradeMetric,
     timestamp: TimestampType,
     interval: Interval,
@@ -155,7 +161,8 @@ def get_derivative_metrics(
 
 
 def get_derivative_metrics(
-    api_key: str,
+    api_key: str | None = None,
+    *,
     metric: TradeMetric,
     timestamp: TimestampType,
     interval: Interval,
