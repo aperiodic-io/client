@@ -8,9 +8,10 @@ from typing import TYPE_CHECKING
 from tqdm.auto import tqdm
 
 from .._compat import get_backend_module
-from ..client import download_parquet_bytes, fetch_json
+from ..client import AperiodicDataError, download_parquet_bytes, fetch_json
 from ..config import (
     DEFAULT_BASE_URL,
+    DEMO_API_KEY,
     MAX_CONCURRENT_DOWNLOADS,
     TIMESTAMP_COL,
     get_headers,
@@ -19,6 +20,22 @@ from ..types import AggregateDataResponse, Interval, OutputFormat, TimestampType
 
 if TYPE_CHECKING:
     pass
+
+
+def _resolve_api_key(api_key: str | None, preview: bool) -> str:
+    """Resolve the effective API key for a data request.
+
+    Preview data is served against a shared demo key, so ``api_key`` may be
+    omitted when ``preview=True``. A key is always required otherwise.
+    """
+    if api_key:
+        return api_key
+    if preview:
+        return DEMO_API_KEY
+    raise AperiodicDataError(
+        "api_key is required. Pass your Aperiodic API key, or set preview=True "
+        "to query the free preview datasets with the shared demo key."
+    )
 
 
 async def _fetch_presigned_urls(
@@ -52,7 +69,7 @@ async def _fetch_presigned_urls(
 
 
 async def _get_files_from_bucket_async(
-    api_key: str,
+    api_key: str | None,
     bucket: str,
     timestamp: TimestampType,
     interval: Interval,
@@ -72,6 +89,7 @@ async def _get_files_from_bucket_async(
     Fetches pre-signed URLs from the API, then downloads all parquet files
     in parallel with per-file retry logic and concatenates them into a single DataFrame.
     """
+    api_key = _resolve_api_key(api_key, preview)
     backend = get_backend_module(output)
 
     # Step 1: Get pre-signed URLs for all months

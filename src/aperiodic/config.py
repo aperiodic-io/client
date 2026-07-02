@@ -2,6 +2,11 @@ import os
 
 DEFAULT_BASE_URL = os.environ.get("APERIODIC_API_URL") or "https://aperiodic.io/api/v1"
 
+# Shared public demo key. Preview data (preview=True) is served against this key
+# so users can query the whitelisted preview slice without signing up. Keep in
+# sync with the `preview@aperiodic.io` credential advertised on aperiodic.io.
+DEMO_API_KEY = "DEMO-KEY"
+
 
 def get_headers(api_key: str) -> dict[str, str]:
     """Build request headers, optionally including Cloudflare Access service token."""

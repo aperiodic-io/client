@@ -22,6 +22,8 @@ pip install -e .
 
 All endpoints require your [Aperiodic.io](https://aperiodic.io) API key passed as `api_key="..."`.
 
+The one exception is [preview data](#preview-no-subscription-required): with `preview=True` the `api_key` is optional — omit it and the shared public demo key is used automatically.
+
 ## Symbology
 
 Symbols are expected in **[Atlas unified symbology](https://github.com/aperiodic-io/atlas)** — a standardised, exchange-agnostic naming scheme.
@@ -77,7 +79,7 @@ print(df.columns)
 
 All data endpoints share this shape:
 
-- `api_key`: Your [Aperiodic.io](https://aperiodic.io) API key.
+- `api_key`: Your [Aperiodic.io](https://aperiodic.io) API key. Optional when `preview=True` — the shared public demo key is used automatically.
 - `timestamp`: `"exchange"` or `"true"`.
 - `interval`: `"1m"` | `"5m"` | `"15m"` | `"30m"` | `"1h"` | `"4h"` | `"1d"`.
 - `exchange`: `"binance-futures"` | `"okx-perps"` | `"hyperliquid-perps"`.
@@ -193,7 +195,7 @@ asyncio.run(main())
 
 ### Preview (no subscription required)
 
-Any authenticated user — even without a paid subscription — can access a curated slice of data via `preview=True`. The request must match the exact parameters (exchange, symbol, interval, timestamp, date range) for one of the whitelisted entries.
+Anyone can access a curated slice of data via `preview=True` — no subscription and no API key required. Omit `api_key` and the client uses the shared public demo key automatically. The request must match the exact parameters (exchange, symbol, interval, timestamp, date range) for one of the whitelisted entries.
 
 **Available preview datasets:** [aperiodic.io/catalog#preview](https://aperiodic.io/catalog#preview)
 
@@ -203,7 +205,6 @@ from aperiodic import get_ohlcv
 
 # Use the exact parameters listed at https://aperiodic.io/catalog#preview
 df = get_ohlcv(
-    api_key="your-api-key",  # sign up free at aperiodic.io
     exchange="binance-futures",
     symbol="perpetual-BTC-USDT:USDT",
     interval="5m",

@@ -17,8 +17,10 @@ from datetime import date
 
 import pytest
 
-from aperiodic import APIError, get_metrics, get_ohlcv
+from aperiodic import AperiodicDataError, APIError, get_metrics, get_ohlcv
 from aperiodic._compat import HAS_POLARS, DataFrame
+from aperiodic.config import DEMO_API_KEY
+from aperiodic.endpoints.utils import _resolve_api_key
 
 API_KEY = os.environ.get("APERIODIC_API_KEY")
 
@@ -52,6 +54,14 @@ class TestPreview:
             assert result["time"].is_sorted()
         else:
             assert result["time"].is_monotonic_increasing
+
+    def test_ohlcv_without_api_key_uses_demo_key(self):
+        """Omitting api_key with preview=True falls back to the shared demo key."""
+        result = get_ohlcv(preview=True, **PREVIEW_PARAMS)
+        assert isinstance(result, DataFrame)
+        assert len(result) > 0
+        for col in ["open", "high", "low", "close", "volume"]:
+            assert col in result.columns
 
     def test_l2_imbalance_returns_dataframe(self):
         result = get_metrics(
@@ -89,3 +99,20 @@ class TestPreview:
             f"Expected 400 for {reason} ({start_date} to {end_date}), "
             f"got {exc_info.value.status_code}"
         )
+
+
+class TestResolveApiKey:
+    """Unit tests for the api_key fallback — no network required."""
+
+    def test_explicit_key_takes_precedence(self):
+        assert _resolve_api_key("my-key", preview=False) == "my-key"
+        assert _resolve_api_key("my-key", preview=True) == "my-key"
+
+    @pytest.mark.parametrize("api_key", [None, ""])
+    def test_preview_without_key_falls_back_to_demo(self, api_key):
+        assert _resolve_api_key(api_key, preview=True) == DEMO_API_KEY
+
+    @pytest.mark.parametrize("api_key", [None, ""])
+    def test_missing_key_without_preview_raises(self, api_key):
+        with pytest.raises(AperiodicDataError):
+            _resolve_api_key(api_key, preview=False)
