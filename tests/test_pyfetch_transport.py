@@ -15,8 +15,11 @@ pq = pytest.importorskip("pyarrow.parquet")
 class FakeResponse:
     """Minimal mock for pyfetch response."""
 
-    def __init__(self, status: int, body: bytes | str):
+    def __init__(
+        self, status: int, body: bytes | str, headers: dict[str, str] | None = None
+    ):
         self.status = status
+        self.headers = headers or {}
         self._body = body
 
     async def string(self) -> str:
@@ -93,6 +96,121 @@ class TestFetchJson:
         call_url = fake_pyfetch.call_args[0][0]
         assert "exchange=binance" in call_url
         assert "interval=1d" in call_url
+
+
+class TestFetchJsonRetries:
+    @pytest.fixture
+    def slept(self, monkeypatch):
+        """Record backoff waits instead of serving them, keeping tests fast."""
+        import asyncio
+
+        delays: list[float] = []
+
+        async def fake_sleep(seconds: float) -> None:
+            delays.append(seconds)
+
+        monkeypatch.setattr(asyncio, "sleep", fake_sleep)
+        return delays
+
+    @pytest.mark.asyncio
+    @pytest.mark.usefixtures("slept")
+    async def test_retries_transient_failure_then_succeeds(self):
+        body = json.dumps({"symbols": ["perpetual-BTC-USDT:USDT"]})
+        patcher, fake_pyfetch = _patch_pyodide(
+            [
+                FakeResponse(503, '{"error": "Failed to list symbols"}'),
+                FakeResponse(200, body),
+            ]
+        )
+        with patcher:
+            from aperiodic._backends._pyfetch_transport import fetch_json
+
+            result = await fetch_json(
+                "https://api.example.com/metadata/symbols",
+                params={"exchange": "binance-futures"},
+                headers={"X-API-KEY": "test"},
+            )
+
+        assert result == {"symbols": ["perpetual-BTC-USDT:USDT"]}
+        assert fake_pyfetch.await_count == 2
+
+    @pytest.mark.asyncio
+    @pytest.mark.usefixtures("slept")
+    async def test_retries_network_errors(self):
+        body = json.dumps({"symbols": []})
+        patcher, fake_pyfetch = _patch_pyodide(
+            [OSError("network error"), FakeResponse(200, body)]
+        )
+        with patcher:
+            from aperiodic._backends._pyfetch_transport import fetch_json
+
+            result = await fetch_json(
+                "https://api.example.com/metadata/symbols",
+                params={},
+                headers={},
+            )
+
+        assert result == {"symbols": []}
+        assert fake_pyfetch.await_count == 2
+
+    @pytest.mark.asyncio
+    @pytest.mark.usefixtures("slept")
+    async def test_surfaces_the_error_once_retries_run_out(self):
+        patcher, fake_pyfetch = _patch_pyodide(
+            lambda *a, **kw: FakeResponse(503, '{"error": "Failed to list symbols"}')
+        )
+        with patcher:
+            from aperiodic._backends._pyfetch_transport import APIError, fetch_json
+
+            with pytest.raises(APIError) as exc_info:
+                await fetch_json(
+                    "https://api.example.com/metadata/symbols",
+                    params={},
+                    headers={},
+                    max_retries=2,
+                )
+
+        assert exc_info.value.status_code == 503
+        assert fake_pyfetch.await_count == 3
+
+    @pytest.mark.asyncio
+    @pytest.mark.usefixtures("slept")
+    async def test_does_not_retry_client_errors(self):
+        patcher, fake_pyfetch = _patch_pyodide(
+            lambda *a, **kw: FakeResponse(401, '{"error": "Unauthorized"}')
+        )
+        with patcher:
+            from aperiodic._backends._pyfetch_transport import APIError, fetch_json
+
+            with pytest.raises(APIError):
+                await fetch_json(
+                    "https://api.example.com/metadata/symbols",
+                    params={},
+                    headers={},
+                )
+
+        assert fake_pyfetch.await_count == 1
+
+    @pytest.mark.asyncio
+    async def test_honours_retry_after_up_to_the_cap(self, slept):
+        from aperiodic.config import MAX_RETRY_DELAY
+
+        patcher, _ = _patch_pyodide(
+            [
+                FakeResponse(503, "", headers={"retry-after": "60"}),
+                FakeResponse(200, json.dumps({"symbols": []})),
+            ]
+        )
+        with patcher:
+            from aperiodic._backends._pyfetch_transport import fetch_json
+
+            await fetch_json(
+                "https://api.example.com/metadata/symbols",
+                params={},
+                headers={},
+            )
+
+        assert slept == [MAX_RETRY_DELAY]
 
 
 class TestDownloadParquetBytes:

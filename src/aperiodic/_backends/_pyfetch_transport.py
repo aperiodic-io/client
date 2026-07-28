@@ -14,6 +14,9 @@ from importlib.util import find_spec
 from typing import TYPE_CHECKING, Any, TypeVar
 from urllib.parse import quote
 
+from ..config import MAX_RETRIES, RETRY_BACKOFF_BASE, RETRYABLE_STATUS_CODES
+from ._retry import retry_delay
+
 if TYPE_CHECKING:
     from collections.abc import Coroutine
 
@@ -107,17 +110,58 @@ async def fetch_json(
     url: str,
     params: dict[str, str],
     headers: dict[str, str],
+    *,
+    max_retries: int = MAX_RETRIES,
+    backoff_base: float = RETRY_BACKOFF_BASE,
 ) -> Any:
-    """Make a GET request and return parsed JSON."""
+    """Make a GET request and return parsed JSON.
+
+    Transient failures — network errors, rate limits, upstream 5xx — are
+    retried with exponential backoff. Every other response is handed to the
+    caller as data or an ``APIError`` on the first attempt.
+    """
+    full_url = _build_url(url, params)
+
+    for attempt in range(max_retries):
+        try:
+            resp = await _pyfetch_get(full_url, headers)
+        except Exception:  # a failed fetch surfaces as an untyped JsException
+            await asyncio.sleep(retry_delay(attempt, backoff_base))
+            continue
+
+        if resp.status not in RETRYABLE_STATUS_CODES:
+            return await _parse_json_response(resp)
+
+        await asyncio.sleep(retry_delay(attempt, backoff_base, _retry_after(resp)))
+
+    resp = await _pyfetch_get(full_url, headers)
+    return await _parse_json_response(resp)
+
+
+async def _pyfetch_get(url: str, headers: dict[str, str]) -> Any:
     from pyodide.http import pyfetch  # type: ignore[import-not-found]
 
-    full_url = _build_url(url, params)
-    resp = await pyfetch(full_url, headers=_to_js_headers(headers))
+    return await pyfetch(url, headers=_to_js_headers(headers))
 
+
+async def _parse_json_response(resp: Any) -> Any:
     if resp.status != 200:
         await _handle_pyfetch_error(resp)
 
     return json.loads(await resp.string())
+
+
+def _retry_after(resp: Any) -> str | None:
+    """Read the ``Retry-After`` header off a pyfetch response, if it has one.
+
+    Pyodide exposes ``FetchResponse.headers`` as a plain dict with lower-cased
+    keys; anything else (older Pyodide, test doubles) is treated as absent.
+    """
+    headers = getattr(resp, "headers", None)
+    if not isinstance(headers, dict):
+        return None
+
+    return headers.get("retry-after")
 
 
 async def download_parquet_bytes(
