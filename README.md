@@ -252,10 +252,12 @@ with KafkaStreamClient.from_env() as stream:
 Credentials can also be passed directly, if you keep them somewhere other than the environment:
 
 ```python
+from aperiodic.streaming import KafkaStreamClient
+
 stream = KafkaStreamClient(
-    bootstrap_servers="...",
-    account_id="...",
-    api_key="...",
+    bootstrap_servers="broker.example.net:9093",
+    account_id="your-account-id",
+    api_key="your-api-key",
     timeout=10.0,
 )
 ```

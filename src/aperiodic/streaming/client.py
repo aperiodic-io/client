@@ -352,10 +352,12 @@ class KafkaStreamClient:
         message; ``None`` runs until the caller breaks out. Either way the
         consumer is closed on the way out.
         """
-        confluent_kafka = _require_confluent_kafka()
-
+        # Validate before requiring the extra, so a bad group id is reported as
+        # a bad group id whether or not confluent-kafka happens to be installed.
         group_id = self.build_group_id(group_suffix)
         action = f"Consuming from '{topic}'"
+
+        confluent_kafka = _require_confluent_kafka()
 
         self._last_error = None
 

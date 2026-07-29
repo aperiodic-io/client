@@ -150,12 +150,18 @@ class Redactor:
 
 
 def _ordered(literals: list[tuple[str, str]]) -> list[tuple[str, str]]:
-    """Drop blanks and sort longest-first so no literal shadows a longer one."""
+    """Drop degenerate literals and sort longest-first, so none shadows a longer one.
+
+    A literal must carry at least one alphanumeric character. Without that, a
+    malformed endpoint like ``"..."`` would register ``"."`` as a literal, and
+    every full stop in every scrubbed message — for any client in the process,
+    since redactors are registered globally — would become a placeholder.
+    """
     return sorted(
         {
             (literal, placeholder)
             for literal, placeholder in literals
-            if literal.strip()
+            if any(character.isalnum() for character in literal)
         },
         key=lambda pair: len(pair[0]),
         reverse=True,

@@ -164,6 +164,18 @@ class TestRedaction:
         assert "va1ue" not in scrubbed
         assert "k3y" not in scrubbed
 
+    def test_degenerate_endpoint_does_not_redact_everything(self):
+        """A malformed endpoint must not register punctuation as a literal —
+        redactors are global, so one bad client would corrupt every message in
+        the process."""
+        scrubbed = Redactor.for_credentials(
+            bootstrap_servers="...",
+            account_id=FAKE_ACCOUNT_ID,
+            api_key=FAKE_API_KEY,
+        ).scrub("Broker: Topic authorization failed")
+
+        assert scrubbed == "Broker: Topic authorization failed"
+
     def test_scrub_is_idempotent(self, redactor):
         once = redactor.scrub(RDKAFKA_CONNECT_FAILURE)
 
