@@ -217,6 +217,91 @@ df = get_ohlcv(
 print(df.head())
 ```
 
+## Live Streams (Kafka)
+
+Metrics are also published as live Kafka streams. Authentication uses the same API key as the REST endpoints above, and your subscription tier decides which topics you can read.
+
+```bash
+pip install aperiodic[streaming]
+```
+
+### Credentials
+
+Three values, read from the environment:
+
+| Variable | Value |
+|----------|-------|
+| `APERIODIC_KAFKA_BOOTSTRAP` | Bootstrap endpoint in `host:port` form — we provide this |
+| `APERIODIC_KAFKA_ACCOUNT_ID` | Your account id, used as the SASL username |
+| `APERIODIC_KAFKA_API_KEY` | Your Aperiodic data API key, used as the SASL password |
+
+The API key is the same one the REST API takes — there is no separate streaming password. The client ships no defaults for any of these; a missing variable raises `StreamConfigError` naming the variable.
+
+### Quick Start
+
+```python
+from aperiodic.streaming import KafkaStreamClient
+
+with KafkaStreamClient.from_env() as stream:
+    print(stream.list_topics())
+
+    for message in stream.consume("ohlcv.binance-futures.m1", group_suffix="research"):
+        print(message)
+```
+
+Credentials can also be passed directly, if you keep them somewhere other than the environment:
+
+```python
+stream = KafkaStreamClient(
+    bootstrap_servers="...",
+    account_id="...",
+    api_key="...",
+    timeout=10.0,
+)
+```
+
+### Topics
+
+Topics are named `<dataset>.<exchange>.<interval>`, for example `ohlcv.binance-futures.m1`. Parse one with `TopicName.parse(...)`.
+
+`list_topics()` returns only the datasets your tier covers. Reading anything else raises `StreamAuthorizationError` with code `TOPIC_AUTHORIZATION_FAILED`; `check_topic_access(topic)` tests a single topic without consuming from it.
+
+### Consumer Groups
+
+**Consumer groups must be named `<account-id>-<suffix>`.** The broker rejects every other name with `GROUP_AUTHORIZATION_FAILED`. Pass `group_suffix=` and the client applies the prefix for you:
+
+```python
+stream.build_group_id("research")   # "<your-account-id>-research"
+```
+
+### Reading
+
+`consume(topic, group_suffix=..., timeout=..., max_messages=...)` returns a list of message payloads. It returns early rather than blocking: an empty list means the topic was quiet for `timeout` seconds, which is not an error. Being refused the topic, or failing to reach the cluster, raises.
+
+Every call takes a bounded timeout, defaulting to the client's `timeout` (10s).
+
+### Connection Details
+
+`SASL_SSL` with `SCRAM-SHA-256`. The brokers present a publicly trusted certificate that validates against the system CA store, so there is no CA bundle to configure — and certificate verification should never be disabled.
+
+### Errors
+
+All streaming exceptions inherit `StreamingError`, which inherits `AperiodicDataError`. Each carries a `code` attribute holding the underlying Kafka error name.
+
+| Exception | Raised when |
+|-----------|-------------|
+| `StreamConfigError` | A required environment variable is missing, or a setting is invalid |
+| `StreamGroupIdError` | A consumer group id does not carry your account-id prefix |
+| `StreamConnectionError` | The cluster could not be reached — DNS, TLS or timeout |
+| `StreamAuthError` | The account id / API key pair was rejected |
+| `StreamAuthorizationError` | Authenticated, but not entitled to that topic or group |
+
+### Logging
+
+The client routes librdkafka's output through a redacting log filter and scrubs its own errors, so the endpoint, your account id and your API key do not appear in exception messages, tracebacks, `repr()` or log records. This makes the client's output safe to paste into a shared terminal or a CI log — but the credentials themselves still belong in a secret store, never in source.
+
+Client logs are emitted under the `aperiodic.streaming` logger.
+
 ## Performance Notes
 
 - Downloads are split into monthly parquet files server-side.
@@ -231,6 +316,7 @@ print(df.head())
 - `polars`
 - `tqdm`
 - `nest-asyncio`
+- `confluent-kafka` — only for [live streams](#live-streams-kafka), via `pip install aperiodic[streaming]`
 
 ## License
 
