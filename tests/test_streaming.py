@@ -382,6 +382,12 @@ class TestConsumerGroupPrefix:
         with pytest.raises(StreamGroupIdError):
             client.build_group_id(suffix)
 
+    @pytest.mark.parametrize("suffix", ["a1b2c3d4-worker", "deadbeef-1", "run-2024-01"])
+    def test_hex_looking_suffixes_are_accepted(self, client, suffix):
+        """A suffix built from a short commit sha is ordinary, not a foreign
+        account id — only a full UUID shape is rejected."""
+        assert client.build_group_id(suffix) == f"{FAKE_ACCOUNT_ID}-{suffix}"
+
     def test_another_accounts_group_rejected(self, client):
         """The broker answers GROUP_AUTHORIZATION_FAILED; fail before the round trip."""
         with pytest.raises(StreamGroupIdError):

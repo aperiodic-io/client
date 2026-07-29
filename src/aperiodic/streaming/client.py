@@ -9,6 +9,7 @@ raises or logs, and bounds every network call. Anything beyond that is left to
 from __future__ import annotations
 
 import logging
+import re
 import time
 from collections.abc import Iterator
 from dataclasses import dataclass
@@ -50,6 +51,10 @@ SASL_MECHANISM = "SCRAM-SHA-256"
 
 TOPIC_SEPARATOR = "."
 TOPIC_FIELD_COUNT = 3
+
+_FOREIGN_ACCOUNT_ID = re.compile(
+    r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}-"
+)
 
 logger = install_log_filter(logging.getLogger("aperiodic.streaming"))
 
@@ -272,7 +277,7 @@ class KafkaStreamClient:
 
         # A suffix carrying some *other* account's id would build a group the
         # broker rejects; naming the account ids in the message would leak them.
-        if _looks_like_uuid_prefix(suffix):
+        if _starts_with_foreign_account_id(suffix):
             raise StreamGroupIdError(
                 "The consumer group suffix starts with an account id that is not "
                 "yours. Groups must be named '<your-account-id>-<suffix>'; pass "
@@ -309,7 +314,7 @@ class KafkaStreamClient:
         return list(self.cluster_metadata(timeout=timeout).topics)
 
     def check_topic_access(self, topic: str, timeout: float | None = None) -> None:
-        """Return if ``topic`` is readable, else raise.
+        """Raise unless ``topic`` is readable by this account.
 
         Raises :class:`StreamAuthorizationError` with code
         ``TOPIC_AUTHORIZATION_FAILED`` when the account's tier does not cover
@@ -585,16 +590,15 @@ class KafkaStreamClient:
             )
 
 
-def _looks_like_uuid_prefix(suffix: str) -> bool:
-    """Whether ``suffix`` opens with something shaped like an account id."""
-    head = suffix.split("-")
-    uuid_head_length = 8
+def _starts_with_foreign_account_id(suffix: str) -> bool:
+    """Whether ``suffix`` opens with a full account id followed by more text.
 
-    return (
-        len(head) > 1
-        and len(head[0]) == uuid_head_length
-        and all(character in "0123456789abcdefABCDEF" for character in head[0])
-    )
+    Necessarily *another* account's — a suffix carrying this client's own id was
+    returned as already-qualified before reaching here. The whole UUID shape is
+    required rather than a hex-looking head, so ordinary suffixes built from a
+    short commit sha (``a1b2c3d4-worker``) are not caught by it.
+    """
+    return _FOREIGN_ACCOUNT_ID.match(suffix) is not None
 
 
 __all__ = [
