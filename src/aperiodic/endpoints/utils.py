@@ -16,7 +16,13 @@ from ..config import (
     TIMESTAMP_COL,
     get_headers,
 )
-from ..types import AggregateDataResponse, Interval, OutputFormat, TimestampType
+from ..types import (
+    AggregateDataResponse,
+    FileInfo,
+    Interval,
+    OutputFormat,
+    TimestampType,
+)
 
 if TYPE_CHECKING:
     pass
@@ -68,6 +74,29 @@ async def _fetch_presigned_urls(
     return await fetch_json(url, params=params, headers=headers)
 
 
+async def _download_file(
+    file_info: FileInfo,
+    headers: dict[str, str],
+    semaphore: asyncio.Semaphore,
+) -> tuple[tuple[int, int, int], bytes]:
+    """Download one parquet file, tagged with its chronological sort key.
+
+    Files are downloaded concurrently and complete out of order, so each one
+    carries the key it must be concatenated by. Monthly files have no ``day``
+    and sort ahead of the same month's daily files — which is also their
+    chronological order, since a month is only served as a monthly file for the
+    days before the daily cutover.
+    """
+    year, month, raw = await download_parquet_bytes(
+        file_info["url"],
+        headers,
+        year=file_info["year"],
+        month=file_info["month"],
+        semaphore=semaphore,
+    )
+    return (year, month, file_info.get("day", 0)), raw
+
+
 async def _get_files_from_bucket_async(
     api_key: str | None,
     bucket: str,
@@ -92,7 +121,7 @@ async def _get_files_from_bucket_async(
     api_key = _resolve_api_key(api_key, preview)
     backend = get_backend_module(output)
 
-    # Step 1: Get pre-signed URLs for all months
+    # Step 1: Get pre-signed URLs for every file covering the range
     response = await _fetch_presigned_urls(
         api_key=api_key,
         bucket=bucket,
@@ -113,16 +142,7 @@ async def _get_files_from_bucket_async(
     # Step 2: Download all files in parallel with per-file retry
     headers = get_headers(api_key)
     semaphore = asyncio.Semaphore(max_concurrent)
-    tasks = [
-        download_parquet_bytes(
-            file_info["url"],
-            headers,
-            year=file_info["year"],
-            month=file_info["month"],
-            semaphore=semaphore,
-        )
-        for file_info in files
-    ]
+    tasks = [_download_file(file_info, headers, semaphore) for file_info in files]
 
     if show_progress:
         results = []
@@ -137,9 +157,9 @@ async def _get_files_from_bucket_async(
     else:
         results = await asyncio.gather(*tasks)
 
-    # Step 3: Sort by year/month, read parquet, and concatenate
-    results_sorted = sorted(results, key=lambda x: (x[0], x[1]))
-    dataframes = [backend.read_parquet(BytesIO(raw)) for _, _, raw in results_sorted]
+    # Step 3: Sort chronologically, read parquet, and concatenate
+    results_sorted = sorted(results, key=lambda result: result[0])
+    dataframes = [backend.read_parquet(BytesIO(raw)) for _, raw in results_sorted]
 
     if not dataframes:
         return backend.empty_dataframe()
