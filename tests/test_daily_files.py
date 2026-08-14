@@ -1,6 +1,6 @@
 """Tests for ordering of downloaded parquet files.
 
-Data up to 2026-08-10 is served as one parquet per month; from 2026-08-11 the
+Data up to 2026-07-31 is served as one parquet per month; from 2026-08-01 the
 API returns one parquet per day, so a single response can contain many files
 sharing the same ``year``/``month``. These tests pin the client's ordering
 guarantee: files are concatenated chronologically regardless of the order their
@@ -139,8 +139,10 @@ class TestDailyFileOrdering:
         assert _markers(result) == [1, 2, 3]
 
     def test_monthly_file_sorts_before_the_same_month_daily_files(self):
-        # August 2026 is served by both layouts: the monthly file covers 1-10,
-        # daily files cover 11 onwards, so the monthly file comes first.
+        # The changeover falls on a month boundary, so the API does not mix the
+        # two layouts within one month today. Pinned anyway: this ordering is
+        # what the missing-`day` fallback means, and the client should not
+        # silently scramble if a month is ever served both ways.
         result = _run(
             [
                 {"year": 2026, "month": 8, "marker": 1},
