@@ -42,9 +42,10 @@ def filter_datetime_range(
     df: pd.DataFrame,
     start_date: datetime,
     end_date: datetime,
+    column: str = "datetime",
 ) -> pd.DataFrame:
-    """Filter DataFrame to rows where 'datetime' is between start_date and end_date."""
-    mask = (df["datetime"] >= start_date) & (df["datetime"] <= end_date)
+    """Filter DataFrame to rows where ``column`` is between start_date and end_date."""
+    mask = (df[column] >= start_date) & (df[column] <= end_date)
     return df.loc[mask].reset_index(drop=True)
 
 
@@ -56,3 +57,8 @@ def sort_by(df: pd.DataFrame, column: str) -> pd.DataFrame:
 def has_column(df: pd.DataFrame, column: str) -> bool:
     """Check if DataFrame has a column."""
     return column in df.columns
+
+
+def column_names(df: pd.DataFrame) -> list[str]:
+    """Column names in order."""
+    return list(df.columns)

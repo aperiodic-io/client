@@ -13,7 +13,8 @@ from ..config import (
     DEFAULT_BASE_URL,
     DEMO_API_KEY,
     MAX_CONCURRENT_DOWNLOADS,
-    TIMESTAMP_COL,
+    TIME_COLUMN,
+    TIMESTAMP_PARAM,
     get_headers,
 )
 from ..types import (
@@ -62,7 +63,7 @@ async def _fetch_presigned_urls(
     else:
         url = f"{base_url}/data/{bucket}"
     params = {
-        TIMESTAMP_COL: timestamp,
+        TIMESTAMP_PARAM: timestamp,
         "interval": interval,
         "exchange": exchange,
         "symbol": symbol,
@@ -164,16 +165,46 @@ async def _get_files_from_bucket_async(
     if not dataframes:
         return backend.empty_dataframe()
 
+    _require_uniform_schema(backend, dataframes, results_sorted)
+
     combined = backend.concat(dataframes)
 
-    # Filter to exact date range if timestamp column exists
-    if backend.has_column(combined, TIMESTAMP_COL):
-        combined = backend.from_epoch_ms(combined, TIMESTAMP_COL)
-
+    # Trim to the exact bounds and order the rows. `time` is written as a timestamp, so
+    # it needs no epoch conversion; the files also arrive in whatever order their
+    # downloads finished, and concatenation order is otherwise the final row order.
+    if backend.has_column(combined, TIME_COLUMN):
         start_dt = datetime.combine(start_date, datetime.min.time())
         end_dt = datetime.combine(end_date, datetime.max.time())
-        combined = backend.filter_datetime_range(combined, start_dt, end_dt)
-
-        combined = backend.sort_by(combined, TIMESTAMP_COL)
+        combined = backend.filter_datetime_range(
+            combined, start_dt, end_dt, column=TIME_COLUMN
+        )
+        combined = backend.sort_by(combined, TIME_COLUMN)
 
     return combined
+
+
+def _require_uniform_schema(backend, dataframes, results_sorted) -> None:
+    """Fail with the offending file named, rather than a bare width mismatch.
+
+    Concatenating files whose columns differ raises deep in the dataframe library
+    ("unable to append to a DataFrame of width 17 with a DataFrame of width 13"), which
+    says nothing about which object is wrong. Schema drift here means a producer wrote a
+    file the others don't match, so name it.
+    """
+    if len(dataframes) < 2:
+        return
+
+    expected = backend.column_names(dataframes[0])
+    for frame, (key, _) in zip(dataframes[1:], results_sorted[1:], strict=True):
+        found = backend.column_names(frame)
+        if found == expected:
+            continue
+        year, month, day = key
+        where = f"{year}-{month:02d}" + (f"-{day:02d}" if day else "")
+        raise AperiodicDataError(
+            f"Inconsistent columns across downloaded files: {where} has "
+            f"{len(found)} column(s), expected {len(expected)}. "
+            f"Unexpected: {sorted(set(found) - set(expected)) or 'none'}; "
+            f"missing: {sorted(set(expected) - set(found)) or 'none'}. "
+            "This is a defect in the stored object, not in the query."
+        )
