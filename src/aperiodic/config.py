@@ -18,7 +18,18 @@ def get_headers(api_key: str) -> dict[str, str]:
         headers["CF-Access-Client-Secret"] = cf_client_secret
     return headers
 
-TIMESTAMP_COL = "timestamp"
+
+# The `timestamp=` query parameter. Names the timestamp *type* an object was built
+# against ("exchange" or "true") — it is not a column in the data.
+TIMESTAMP_PARAM = "timestamp"
+
+# The interval-start column every metric parquet carries, written as a timestamp.
+#
+# Kept deliberately separate from TIMESTAMP_PARAM. One constant used to serve both
+# roles, which meant the trailing sort looked for a column named "timestamp" that the
+# parquets never had — so it silently never ran — while an object that *did* carry a
+# stray "timestamp" column got its partition value parsed as a datetime instead.
+TIME_COLUMN = "time"
 
 MAX_CONCURRENT_DOWNLOADS = 10
 

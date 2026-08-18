@@ -1,4 +1,4 @@
-from typing import Literal, TypedDict
+from typing import Literal, NotRequired, TypedDict
 
 OutputFormat = Literal["polars", "pandas"]
 
@@ -33,6 +33,9 @@ class FileInfo(TypedDict):
     year: int
     month: int
     url: str
+    # Present only for daily files. Older data is served as one file per month,
+    # which carries no `day`.
+    day: NotRequired[int]
 
 
 class AggregateDataResponse(TypedDict):
