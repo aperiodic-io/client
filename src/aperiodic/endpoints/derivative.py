@@ -88,7 +88,8 @@ async def get_derivative_metrics_async(
             shared public demo key is used automatically
         metric: Which trade metric to fetch
         timestamp: Timestamp source - 'exchange' or 'true'
-        interval: Aggregation interval ('1m', '5m', '15m', '30m', '1h', '4h', '1d')
+        interval: Aggregation interval ('15s', '30s', '1m', '5m', '15m',
+                  '30m', '1h', '4h', '1d'). 15s/30s require Tier 3
         exchange: Source exchange ('binance-futures')
         symbol: Trading pair symbol in Atlas unified symbology
                 (https://github.com/aperiodic-io/atlas), e.g. 'perpetual-BTC-USDT:USDT'
