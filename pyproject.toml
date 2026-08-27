@@ -153,3 +153,6 @@ push = false
     'current_version = "{version}"',
     'version = "{version}"'
 ]
+"src/aperiodic/__init__.py" = [
+    '__version__ = "{version}"'
+]
