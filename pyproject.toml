@@ -56,6 +56,12 @@ quality = [
   "ruff>=0.1.0",
   "pre-commit>=2.20.0",
 ]
+# Live metric streams over Kafka. Kept out of [tests] on purpose: it is a
+# compiled wheel, and the test matrix spans Python versions it does not always
+# ship for. The Kafka acceptance workflow installs it explicitly.
+streaming = [
+  "confluent-kafka>=2.3.0",
+]
 tests = [
   "pytest>=7.0.0",
   "pytest-cov>=4.0",

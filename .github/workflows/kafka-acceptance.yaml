@@ -1,0 +1,84 @@
+name: kafka-acceptance
+
+# Acceptance test for live metric stream authentication and entitlements.
+#
+# Dispatched by the bump workflow in the router repo before a data release, and
+# run on pushes to main. There is deliberately no `pull_request` trigger: fork
+# PRs must never see these secrets. The acceptance job is additionally pinned to
+# this repository so a fork pushing to its own main cannot run it.
+#
+# This repository is public. Nothing in this workflow may echo the bootstrap
+# endpoint, the account id or the API key — no `set -x`, no `echo` of any of
+# them. The test suite scrubs them from its own output; the add-mask step below
+# is the backstop.
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  unit-tests:
+    name: 🔒 Streaming unit tests (redaction, config, group prefix)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: install-dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ".[streaming,tests]"
+
+      # No secrets, no network. Gates the redaction guarantees the acceptance
+      # job below depends on.
+      - name: run-unit-tests
+        run: pytest tests/test_streaming.py -q
+
+  acceptance:
+    name: 🧪 Kafka acceptance (staging)
+    needs: unit-tests
+    if: >-
+      github.repository == 'aperiodic-io/client' &&
+      (github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    # Both jobs together must finish inside the 20 minute window the router's
+    # bump workflow polls for.
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: install-dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ".[streaming,tests]"
+
+      - name: mask-derived-values
+        env:
+          KAFKA_BOOTSTRAP: ${{ secrets.APERIODIC_KAFKA_BOOTSTRAP }}
+          KAFKA_ACCOUNT_ID: ${{ secrets.APERIODIC_KAFKA_ACCOUNT_ID }}
+        run: |
+          # GitHub masks only the literal secret value. librdkafka prints the
+          # host without its port, and the account id turns up inside consumer
+          # group ids, so those forms need registering too. `::add-mask::` is
+          # consumed by the runner, so nothing here reaches the log.
+          printf '::add-mask::%s\n' "${KAFKA_BOOTSTRAP%%:*}"
+          printf '::add-mask::%s\n' "${KAFKA_ACCOUNT_ID}"
+
+      # Skips cleanly if any secret is absent — see tests/test_kafka_acceptance.py.
+      - name: run-acceptance-test
+        env:
+          APERIODIC_KAFKA_BOOTSTRAP: ${{ secrets.APERIODIC_KAFKA_BOOTSTRAP }}
+          APERIODIC_KAFKA_ACCOUNT_ID: ${{ secrets.APERIODIC_KAFKA_ACCOUNT_ID }}
+          APERIODIC_KAFKA_API_KEY: ${{ secrets.APERIODIC_KAFKA_API_KEY }}
+          # Non-secret. Dataset prefixes the throwaway test account's tier
+          # covers; when set, the topic listing is checked against it exactly.
+          APERIODIC_KAFKA_ENTITLED_DATASETS: ${{ vars.APERIODIC_KAFKA_ENTITLED_DATASETS }}
+        run: pytest tests/test_kafka_acceptance.py -q -rs
