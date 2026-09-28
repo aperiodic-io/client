@@ -3,7 +3,8 @@ from typing import Literal, NotRequired, TypedDict
 OutputFormat = Literal["polars", "pandas"]
 
 TimestampType = Literal["exchange", "true"]
-Interval = Literal["1s", "1m", "5m", "15m", "30m", "1h", "4h", "1d"]
+# 15s/30s require a Tier 3 subscription; the API returns 403 otherwise.
+Interval = Literal["15s", "30s", "1m", "5m", "15m", "30m", "1h", "4h", "1d"]
 
 # Spot/futures exchanges
 Exchange = Literal["binance-futures", "okx-perps", "hyperliquid-perps"]
