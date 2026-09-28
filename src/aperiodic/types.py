@@ -52,3 +52,31 @@ class SymbolsResponse(TypedDict):
     symbols: list[str]
     exchange: str
     bucket: str
+
+
+# Raw per-tick datasets (Prime + Raw plan). Hyperliquid serves trades and quotes only.
+RawDataset = Literal[
+    "trades",
+    "quotes",
+    "mark_price",
+    "index_price",
+    "funding_rate",
+    "open_interest",
+]
+
+
+class RawFileInfo(TypedDict):
+    # "YYYY-MM" for a monthly file, "YYYY-MM-DD" for a daily one.
+    period: str
+    url: str
+    size: int
+
+
+class RawFilesResponse(TypedDict):
+    dataset: str
+    exchange: str
+    symbol: str
+    schema_version: int
+    expires_in: int
+    files: list[RawFileInfo]
+    missing_periods: list[str]

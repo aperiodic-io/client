@@ -75,27 +75,50 @@ def run_async(coro: Coroutine[None, None, T]) -> T:
 
 
 class APIError(Exception):
-    """Exception raised when the API returns an error."""
+    """Exception raised when the API returns an error.
+
+    ``code`` is the machine-readable reason some responses carry, e.g.
+    ``"raw_not_in_plan"`` or ``"range_too_long"`` on raw data requests.
+    """
 
     def __init__(
-        self, message: str, status_code: int, details: list[str] | None = None
+        self,
+        message: str,
+        status_code: int,
+        details: list[str] | None = None,
+        code: str | None = None,
     ):
         self.message = message
         self.status_code = status_code
         self.details = details or []
+        self.code = code
         super().__init__(f"{status_code}: {message}")
 
 
 class DownloadError(Exception):
-    """Exception raised when a file download fails after all retries."""
+    """Exception raised when a file download fails after all retries.
 
-    def __init__(self, year: int, month: int, original_error: Exception):
+    ``day`` is set for daily files. ``status_code`` is set when the storage
+    answered with an HTTP error; a 403 there means the presigned URL expired or
+    was refused, and is not retried.
+    """
+
+    def __init__(
+        self,
+        year: int,
+        month: int,
+        original_error: Exception,
+        *,
+        day: int | None = None,
+        status_code: int | None = None,
+    ):
         self.year = year
         self.month = month
+        self.day = day
+        self.status_code = status_code
         self.original_error = original_error
-        super().__init__(
-            f"Failed to download data for {year}-{month:02d}: {original_error}"
-        )
+        period = f"{year}-{month:02d}" + (f"-{day:02d}" if day else "")
+        super().__init__(f"Failed to download data for {period}: {original_error}")
 
 
 def _to_js_headers(headers: dict[str, str]) -> Any:
@@ -173,12 +196,17 @@ async def download_parquet_bytes(
     semaphore: asyncio.Semaphore,
     max_retries: int = 3,
     backoff_base: float = 1.0,
+    day: int | None = None,
+    client: Any = None,
 ) -> tuple[int, int, bytes]:
     """Download a parquet file directly from a presigned R2 URL.
 
     Presigned URLs carry auth in their query parameters (X-Amz-*), so no
     additional headers are required. CORS is configured on the R2 buckets to
-    allow GET requests from the browser.
+    allow GET requests from the browser. ``client`` exists for parity with the
+    httpx transport and is ignored: the browser pools connections itself. A 403
+    is raised at once with ``status_code=403`` so the caller can request a
+    fresh URL.
 
     Returns:
         Tuple of (year, month, raw_bytes)
@@ -191,14 +219,22 @@ async def download_parquet_bytes(
         for attempt in range(max_retries + 1):
             try:
                 resp = await pyfetch(url, method="GET")
+                if resp.status == 403:
+                    raise DownloadError(
+                        year,
+                        month,
+                        RuntimeError("403 Forbidden (URL expired or refused)"),
+                        day=day,
+                        status_code=403,
+                    )
                 if resp.status != 200:
                     text = await resp.string()
-                    raise RuntimeError(
-                        f"Download failed ({resp.status}): {text}"
-                    )
+                    raise RuntimeError(f"Download failed ({resp.status}): {text}")
                 raw = await resp.bytes()
                 return year, month, raw
 
+            except DownloadError:
+                raise
             except Exception as e:
                 last_exception = e
                 if attempt < max_retries:
@@ -206,7 +242,7 @@ async def download_parquet_bytes(
                     await asyncio.sleep(delay)
 
         raise DownloadError(
-            year, month, last_exception or Exception("Unknown error")
+            year, month, last_exception or Exception("Unknown error"), day=day
         )
 
 
@@ -229,12 +265,15 @@ async def _handle_pyfetch_error(resp: Any) -> None:
         error_data = json.loads(text)
         msg = error_data.get("error", text)
         details = error_data.get("details")
-    except (ValueError, KeyError):
+        code = error_data.get("code")
+    except (ValueError, KeyError, AttributeError):
         msg = text
         details = None
+        code = None
 
     raise APIError(
         message=msg,
         status_code=resp.status,
         details=details,
+        code=code,
     )

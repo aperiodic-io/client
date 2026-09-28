@@ -41,27 +41,50 @@ def run_async(coro: Coroutine[None, None, T]) -> T:
 
 
 class APIError(Exception):
-    """Exception raised when the API returns an error."""
+    """Exception raised when the API returns an error.
+
+    ``code`` is the machine-readable reason some responses carry, e.g.
+    ``"raw_not_in_plan"`` or ``"range_too_long"`` on raw data requests.
+    """
 
     def __init__(
-        self, message: str, status_code: int, details: list[str] | None = None
+        self,
+        message: str,
+        status_code: int,
+        details: list[str] | None = None,
+        code: str | None = None,
     ):
         self.message = message
         self.status_code = status_code
         self.details = details or []
+        self.code = code
         super().__init__(f"{status_code}: {message}")
 
 
 class DownloadError(Exception):
-    """Exception raised when a file download fails after all retries."""
+    """Exception raised when a file download fails after all retries.
 
-    def __init__(self, year: int, month: int, original_error: Exception):
+    ``day`` is set for daily files. ``status_code`` is set when the storage
+    answered with an HTTP error; a 403 there means the presigned URL expired or
+    was refused, and is not retried.
+    """
+
+    def __init__(
+        self,
+        year: int,
+        month: int,
+        original_error: Exception,
+        *,
+        day: int | None = None,
+        status_code: int | None = None,
+    ):
         self.year = year
         self.month = month
+        self.day = day
+        self.status_code = status_code
         self.original_error = original_error
-        super().__init__(
-            f"Failed to download data for {year}-{month:02d}: {original_error}"
-        )
+        period = f"{year}-{month:02d}" + (f"-{day:02d}" if day else "")
+        super().__init__(f"Failed to download data for {period}: {original_error}")
 
 
 def get_http_client(timeout: float = DEFAULT_TIMEOUT) -> httpx.AsyncClient:
@@ -137,8 +160,15 @@ async def download_parquet_bytes(
     semaphore: asyncio.Semaphore,
     max_retries: int = MAX_RETRIES,
     backoff_base: float = RETRY_BACKOFF_BASE,
+    day: int | None = None,
+    client: httpx.AsyncClient | None = None,
 ) -> tuple[int, int, bytes]:
     """Download a parquet file with retry logic.
+
+    Pass ``client`` to reuse one connection pool across a call's downloads.
+    A 403 is raised at once as a ``DownloadError`` with ``status_code=403``:
+    re-sending an expired presigned URL can't succeed, so the caller should
+    request a fresh one instead.
 
     Returns:
         Tuple of (year, month, raw_bytes)
@@ -148,25 +178,49 @@ async def download_parquet_bytes(
 
         for attempt in range(max_retries + 1):
             try:
-                async with get_http_client() as client:
+                if client is None:
+                    async with get_http_client() as own_client:
+                        response = await own_client.get(url, follow_redirects=True)
+                else:
                     response = await client.get(url, follow_redirects=True)
-                    response.raise_for_status()
-                    return year, month, response.content
+                if response.status_code == 403:
+                    raise DownloadError(
+                        year,
+                        month,
+                        RuntimeError("403 Forbidden (URL expired or refused)"),
+                        day=day,
+                        status_code=403,
+                    )
+                response.raise_for_status()
+                return year, month, response.content
 
+            except DownloadError:
+                raise
             except Exception as e:
                 last_exception = e
                 if attempt < max_retries:
                     delay = backoff_base * (2**attempt) + random.uniform(0, 1)
                     await asyncio.sleep(delay)
 
-        raise DownloadError(year, month, last_exception or Exception("Unknown error"))
+        raise DownloadError(
+            year, month, last_exception or Exception("Unknown error"), day=day
+        )
 
 
 async def _handle_api_error(response: httpx.Response) -> None:
     if response.status_code == 401:
-        raise APIError(message="Authorization Required", status_code=response.status_code)
+        raise APIError(
+            message="Authorization Required", status_code=response.status_code
+        )
     if response.status_code == 403:
-        raise APIError(message="Forbidden", status_code=response.status_code)
+        # A 403 can carry a reason (e.g. `raw_not_in_plan`); keep it.
+        body = _json_or_none(response)
+        raise APIError(
+            message=(body or {}).get("error", "Forbidden"),
+            status_code=response.status_code,
+            details=(body or {}).get("details"),
+            code=(body or {}).get("code"),
+        )
     if response.status_code == 404:
         raise APIError(message="Not Found", status_code=response.status_code)
     if response.status_code == 429:
@@ -178,9 +232,18 @@ async def _handle_api_error(response: httpx.Response) -> None:
                 message=error_data.get("error", "Unknown error"),
                 status_code=response.status_code,
                 details=error_data.get("details"),
+                code=error_data.get("code"),
             )
         except (ValueError, KeyError):
             raise APIError(
                 message=response.text or "Unknown error",
                 status_code=response.status_code,
             ) from None
+
+
+def _json_or_none(response: httpx.Response) -> dict[str, Any] | None:
+    try:
+        body = response.json()
+    except ValueError:
+        return None
+    return body if isinstance(body, dict) else None

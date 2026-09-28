@@ -62,6 +62,9 @@ print(df.columns)
 | TWAP | `get_twap` | `get_twap_async` | — |
 | Derivative metrics | `get_derivative_metrics` | `get_derivative_metrics_async` | see below |
 | Exchange symbols | `get_symbols` | `get_symbols_async` | — |
+| Raw data into a DataFrame | `get_raw` | `get_raw_async` | `dataset` (`RawDataset`) |
+| Raw data to disk | `download_raw` | `download_raw_async` | `dataset` (`RawDataset`) |
+| Raw coverage | `get_raw_coverage` | `get_raw_coverage_async` | — |
 
 ### `get_metrics` — Trade & order book metrics
 
@@ -216,6 +219,76 @@ df = get_ohlcv(
 
 print(df.head())
 ```
+
+## Raw data (Prime + Raw plan)
+
+Raw trades, top-of-book quotes and derivative ticks for Binance, OKX and
+Hyperliquid perpetuals, the data the metrics are built from. Same API key and
+symbols as the metrics. History is one Parquet file per calendar month; from
+2026-08-01 there is one file per day.
+
+**Datasets** (`RawDataset`): `"trades"`, `"quotes"`, `"mark_price"`,
+`"index_price"`, `"funding_rate"`, `"open_interest"`. Hyperliquid serves
+`trades` and `quotes` only.
+
+Every file starts with `exchange_timestamp` (the venue's time),
+`local_timestamp` (when the event reached the capture machine) and
+`local_timestamp_kind`: `"measured"`, or `"modelled"` for days before we
+captured the feed ourselves, where the local time is the exchange time plus a
+latency drawn from our measured distribution. Don't use modelled days for
+latency research. Timestamps are timezone-aware UTC.
+
+<!-- The raw examples use "py" fences, not "python": tests/test_readme.py runs
+python blocks containing api_key= against production, where raw data isn't live
+yet. Switch them to python once it is. -->
+
+```py
+from datetime import date
+import aperiodic as ap
+
+# Into one DataFrame, trimmed to the range on exchange_timestamp
+trades = ap.get_raw(
+    api_key="your-api-key",
+    dataset="trades",
+    exchange="binance-futures",
+    symbol="perpetual-BTC-USDT:USDT",
+    start_date=date(2025, 6, 1),
+    end_date=date(2025, 6, 3),
+)
+
+# Large ranges: stream the files to disk instead (skips files you already have)
+paths = ap.download_raw(
+    api_key="your-api-key",
+    dataset="quotes",
+    exchange="okx-perps",
+    symbol="perpetual-BTC-USDT:USDT",
+    start_date=date(2024, 1, 1),
+    end_date=date(2025, 12, 31),
+    output_dir="raw",
+)
+```
+
+`download_raw` writes the bucket's own layout,
+`raw/{dataset}/exchange=…/symbol=…/year=YYYY/month=MM[/day=DD]/data.parquet`
+(`:` becomes `%3A` on Windows). Monthly and daily files sit at different
+depths, so read a folder with a glob and filter on `exchange_timestamp`:
+
+```py
+import polars as pl
+
+lazy = pl.scan_parquet("raw/quotes/**/data.parquet")
+```
+
+- Ranges over 366 days are split into several requests for you.
+- Download URLs are valid for one hour; one that has expired is re-requested
+  automatically.
+- A plan without raw data raises `APIError` with `status_code=403` and
+  `code="raw_not_in_plan"`.
+- `get_raw(..., preview=True)` returns the free June 2025 file of each venue's
+  BTC perpetual without a key. `get_raw_coverage()` lists every symbol's first
+  and last day, no key needed.
+- `download_raw` needs CPython (httpx and a filesystem); in Pyodide use
+  `get_raw`.
 
 ## Performance Notes
 
