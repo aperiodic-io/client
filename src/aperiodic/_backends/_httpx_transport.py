@@ -8,7 +8,13 @@ from typing import TYPE_CHECKING, Any, TypeVar
 
 import httpx
 
-from ..config import DEFAULT_TIMEOUT, MAX_RETRIES, RETRY_BACKOFF_BASE
+from ..config import (
+    DEFAULT_TIMEOUT,
+    MAX_RETRIES,
+    RETRY_BACKOFF_BASE,
+    RETRYABLE_STATUS_CODES,
+)
+from ._retry import retry_delay
 
 if TYPE_CHECKING:
     from collections.abc import Coroutine
@@ -67,12 +73,59 @@ async def fetch_json(
     url: str,
     params: dict[str, str],
     headers: dict[str, str],
+    *,
+    max_retries: int = MAX_RETRIES,
+    backoff_base: float = RETRY_BACKOFF_BASE,
 ) -> Any:
-    """Make a GET request and return parsed JSON."""
+    """Make a GET request and return parsed JSON.
+
+    Transient failures — connection errors, rate limits, upstream 5xx — are
+    retried with exponential backoff. Every other response is handed to the
+    caller as data or an ``APIError`` on the first attempt.
+    """
     async with get_http_client() as client:
-        response = await client.get(url, params=params, headers=headers)
-        await _handle_api_error(response)
-        return response.json()
+        response = await _get_with_retries(
+            client,
+            url,
+            params=params,
+            headers=headers,
+            max_retries=max_retries,
+            backoff_base=backoff_base,
+        )
+
+    await _handle_api_error(response)
+    return response.json()
+
+
+async def _get_with_retries(
+    client: httpx.AsyncClient,
+    url: str,
+    *,
+    params: dict[str, str],
+    headers: dict[str, str],
+    max_retries: int,
+    backoff_base: float,
+) -> httpx.Response:
+    """GET ``url``, retrying transient failures with exponential backoff.
+
+    The final attempt is returned (or raised) as-is, so a request that stays
+    transiently broken still surfaces its real status to the caller.
+    """
+    for attempt in range(max_retries):
+        try:
+            response = await client.get(url, params=params, headers=headers)
+        except httpx.TransportError:
+            await asyncio.sleep(retry_delay(attempt, backoff_base))
+            continue
+
+        if response.status_code not in RETRYABLE_STATUS_CODES:
+            return response
+
+        await asyncio.sleep(
+            retry_delay(attempt, backoff_base, response.headers.get("Retry-After"))
+        )
+
+    return await client.get(url, params=params, headers=headers)
 
 
 async def download_parquet_bytes(

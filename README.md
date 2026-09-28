@@ -223,6 +223,8 @@ print(df.head())
 - Files are fetched concurrently and concatenated locally.
 - Final output is sorted and filtered to your exact requested date range.
 - Tune `max_concurrent` based on your network and compute resources.
+- Transient failures — rate limits, upstream 5xx, dropped connections — are
+  retried with exponential backoff before an `APIError` is raised.
 
 ## Requirements
 
