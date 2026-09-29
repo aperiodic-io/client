@@ -1,4 +1,4 @@
-__version__ = "0.1.0"
+__version__ = "4.1.0"
 
 from .client import AperiodicDataError, APIError, DownloadError
 from .endpoints.derivative import get_derivative_metrics, get_derivative_metrics_async
@@ -11,6 +11,14 @@ from .endpoints.market_data import (
     get_vwap_async,
 )
 from .endpoints.metrics import get_metrics, get_metrics_async
+from .endpoints.raw import (
+    download_raw,
+    download_raw_async,
+    get_raw,
+    get_raw_async,
+    get_raw_coverage,
+    get_raw_coverage_async,
+)
 from .endpoints.symbols import get_symbols, get_symbols_async
 from .types import (
     DerivativeMetric,
@@ -19,6 +27,7 @@ from .types import (
     L1Metric,
     L2Metric,
     OutputFormat,
+    RawDataset,
     TimestampType,
     TradeMetric,
 )
@@ -33,14 +42,21 @@ __all__ = [
     "L1Metric",
     "L2Metric",
     "OutputFormat",
+    "RawDataset",
     "TimestampType",
     "TradeMetric",
+    "download_raw",
+    "download_raw_async",
     "get_derivative_metrics",
     "get_derivative_metrics_async",
     "get_metrics",
     "get_metrics_async",
     "get_ohlcv",
     "get_ohlcv_async",
+    "get_raw",
+    "get_raw_async",
+    "get_raw_coverage",
+    "get_raw_coverage_async",
     "get_symbols",
     "get_symbols_async",
     "get_twap",

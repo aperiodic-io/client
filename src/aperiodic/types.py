@@ -3,7 +3,8 @@ from typing import Literal, NotRequired, TypedDict
 OutputFormat = Literal["polars", "pandas"]
 
 TimestampType = Literal["exchange", "true"]
-Interval = Literal["1s", "1m", "5m", "15m", "30m", "1h", "4h", "1d"]
+# 15s/30s require a Tier 3 subscription; the API returns 403 otherwise.
+Interval = Literal["15s", "30s", "1m", "5m", "15m", "30m", "1h", "4h", "1d"]
 
 # Spot/futures exchanges
 Exchange = Literal["binance-futures", "okx-perps", "hyperliquid-perps"]
@@ -51,3 +52,31 @@ class SymbolsResponse(TypedDict):
     symbols: list[str]
     exchange: str
     bucket: str
+
+
+# Raw per-tick datasets (Prime + Raw plan). Hyperliquid serves trades and quotes only.
+RawDataset = Literal[
+    "trades",
+    "quotes",
+    "mark_price",
+    "index_price",
+    "funding_rate",
+    "open_interest",
+]
+
+
+class RawFileInfo(TypedDict):
+    # "YYYY-MM" for a monthly file, "YYYY-MM-DD" for a daily one.
+    period: str
+    url: str
+    size: int
+
+
+class RawFilesResponse(TypedDict):
+    dataset: str
+    exchange: str
+    symbol: str
+    schema_version: int
+    expires_in: int
+    files: list[RawFileInfo]
+    missing_periods: list[str]
