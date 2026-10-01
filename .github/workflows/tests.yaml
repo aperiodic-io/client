@@ -52,25 +52,13 @@ jobs:
             fi
           fi
 
-      # Without the key the raw tests skip, which must not pass a release.
-      - name: require-staging-raw-key
-        if: inputs.base_url
-        env:
-          APERIODIC_STAGING_RAW_API_KEY: ${{ secrets.APERIODIC_STAGING_RAW_API_KEY }}
-        run: |
-          if [ -z "$APERIODIC_STAGING_RAW_API_KEY" ]; then
-            echo "::error::Set the APERIODIC_STAGING_RAW_API_KEY secret (the staging e2e+primeraw@aperiodic.io key) to test raw data before a release"
-            exit 1
-          fi
-
       - name: run-tests
         env:
           # inputs.base_url is empty on push-triggered runs (test against production),
           # but set to a staging URL when dispatched externally (e.g. from unravel-router).
-          # Use the staging API keys when a base_url is provided, otherwise production.
+          # Use the staging API key when a base_url is provided, otherwise production.
+          # Either must be on Prime + Raw for the raw tests.
           APERIODIC_API_KEY: ${{ inputs.base_url && secrets.APERIODIC_STAGING_API_KEY || secrets.APERIODIC_API_KEY }}
-          # A Prime + Raw key; the raw tests that need one skip without it.
-          APERIODIC_RAW_API_KEY: ${{ inputs.base_url && secrets.APERIODIC_STAGING_RAW_API_KEY || secrets.APERIODIC_RAW_API_KEY }}
           APERIODIC_API_URL: ${{ inputs.base_url || '' }}
           CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
           CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
