@@ -2,8 +2,8 @@
 
 Runs against production, or APERIODIC_API_URL (CI sets staging before a
 release). The files are the June 2025 BTC perpetuals, in the raw buckets since
-the proof of concept. Tests that need a Prime + Raw key skip unless
-APERIODIC_RAW_API_KEY holds one; CI requires it when it runs against staging.
+the proof of concept. The paid tests need APERIODIC_API_KEY to be on the
+Prime + Raw plan.
 
 Whole files are fetched only for derivative datasets: a month of trades or
 quotes runs to hundreds of MB or more, too much for every job in the matrix
@@ -24,12 +24,8 @@ from aperiodic._compat import HAS_POLARS
 from aperiodic.config import DEFAULT_BASE_URL
 from aperiodic.types import RawDataset
 
-API_KEY = os.environ.get("APERIODIC_RAW_API_KEY")
+API_KEY = os.environ.get("APERIODIC_API_KEY")
 OUTPUT = "polars" if HAS_POLARS else "pandas"
-
-needs_raw_key = pytest.mark.skipif(
-    not API_KEY, reason="APERIODIC_RAW_API_KEY (a Prime + Raw key) is not set"
-)
 
 PARAMS = {
     "exchange": "binance-futures",
@@ -72,7 +68,6 @@ def test_demo_key_is_refused_outside_the_preview():
     assert info.value.status_code == 401
 
 
-@needs_raw_key
 def test_get_raw_trims_the_june_file_to_the_range():
     frame = aperiodic.get_raw(API_KEY, dataset="funding_rate", output=OUTPUT, **PARAMS)
 
@@ -83,7 +78,6 @@ def test_get_raw_trims_the_june_file_to_the_range():
     assert max(timestamps) < datetime(2025, 6, 3, tzinfo=UTC)
 
 
-@needs_raw_key
 def test_download_raw_writes_then_skips_the_june_file(tmp_path):
     params = {**PARAMS, "dataset": "mark_price", "output_dir": tmp_path}
 
