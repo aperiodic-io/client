@@ -228,8 +228,7 @@ symbols as the metrics. History is one Parquet file per calendar month; from
 2026-08-01 there is one file per day.
 
 **Datasets** (`RawDataset`): `"trades"`, `"quotes"`, `"mark_price"`,
-`"index_price"`, `"funding_rate"`, `"open_interest"`. Hyperliquid serves
-`trades` and `quotes` only.
+`"index_price"`, `"funding_rate"`, `"open_interest"`, on every venue.
 
 Every file starts with `exchange_timestamp` (the venue's time),
 `local_timestamp` (when the event reached the capture machine) and
@@ -237,6 +236,11 @@ Every file starts with `exchange_timestamp` (the venue's time),
 captured the feed ourselves, where the local time is the exchange time plus a
 latency drawn from our measured distribution. Don't use modelled days for
 latency research. Timestamps are timezone-aware UTC.
+
+Hyperliquid's derivative feed carries no exchange time, so in its
+`mark_price`, `index_price`, `funding_rate` and `open_interest` files
+`exchange_timestamp` is modelled from the capture time, and an
+`exchange_timestamp_kind` column (`"modelled"`) follows it.
 
 <!-- The raw examples use "py" fences, not "python": tests/test_readme.py runs
 python blocks containing api_key= against production, where raw data isn't live
