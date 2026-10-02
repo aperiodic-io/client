@@ -54,7 +54,7 @@ class SymbolsResponse(TypedDict):
     bucket: str
 
 
-# Raw per-tick datasets (Prime + Raw plan). Hyperliquid serves trades and quotes only.
+# Raw per-tick datasets (Prime + Raw plan), served on every venue.
 RawDataset = Literal[
     "trades",
     "quotes",

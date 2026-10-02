@@ -263,8 +263,9 @@ async def get_raw_async(
         api_key: Your Aperiodic API key (Prime + Raw plan). Optional when
             preview=True.
         dataset: 'trades', 'quotes', 'mark_price', 'index_price',
-            'funding_rate' or 'open_interest'. Hyperliquid serves trades and
-            quotes only.
+            'funding_rate' or 'open_interest'. On Hyperliquid, the last
+            four have a modelled ``exchange_timestamp`` and an
+            ``exchange_timestamp_kind`` column.
         exchange: 'binance-futures', 'okx-perps' or 'hyperliquid-perps'.
         symbol: Atlas symbol, e.g. 'perpetual-BTC-USDT:USDT'.
         start_date: First day (exchange-time UTC).
