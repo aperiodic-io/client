@@ -36,7 +36,7 @@ PARAMS = {
     "show_progress": False,
 }
 
-LEADING_COLUMNS = ["exchange_timestamp", "local_timestamp", "local_timestamp_kind"]
+LEADING_COLUMNS = ["exchange_timestamp", "local_timestamp"]
 
 
 def _column(frame, name: str) -> list:
@@ -59,7 +59,7 @@ def test_preview_needs_no_key():
     )
 
     assert len(frame) > 0
-    assert list(frame.columns)[:3] == LEADING_COLUMNS
+    assert list(frame.columns)[:2] == LEADING_COLUMNS
 
 
 def test_demo_key_is_refused_outside_the_preview():
@@ -72,7 +72,7 @@ def test_get_raw_trims_the_june_file_to_the_range():
     frame = aperiodic.get_raw(API_KEY, dataset="funding_rate", output=OUTPUT, **PARAMS)
 
     assert len(frame) > 0
-    assert list(frame.columns)[:3] == LEADING_COLUMNS
+    assert list(frame.columns)[:2] == LEADING_COLUMNS
     timestamps = _column(frame, "exchange_timestamp")
     assert min(timestamps) >= datetime(2025, 6, 1, tzinfo=UTC)
     assert max(timestamps) < datetime(2025, 6, 3, tzinfo=UTC)

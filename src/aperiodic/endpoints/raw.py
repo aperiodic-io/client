@@ -275,8 +275,8 @@ async def get_raw_async(
             perpetual) with the shared demo key instead.
 
     Returns:
-        DataFrame with ``exchange_timestamp``, ``local_timestamp``,
-        ``local_timestamp_kind`` and the dataset's columns.
+        DataFrame with ``exchange_timestamp``, ``local_timestamp`` and the
+        dataset's columns.
 
     Raises:
         APIError: e.g. 403 with ``code="raw_not_in_plan"`` when the plan lacks
