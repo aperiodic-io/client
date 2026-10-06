@@ -230,12 +230,15 @@ symbols as the metrics. History is one Parquet file per calendar month; from
 **Datasets** (`RawDataset`): `"trades"`, `"quotes"`, `"mark_price"`,
 `"index_price"`, `"funding_rate"`, `"open_interest"`, on every venue.
 
-Every file starts with `exchange_timestamp` (the venue's time),
-`local_timestamp` (when the event reached the capture machine) and
-`local_timestamp_kind`: `"measured"`, or `"modelled"` for days before we
-captured the feed ourselves, where the local time is the exchange time plus a
-latency drawn from our measured distribution. Don't use modelled days for
-latency research. Timestamps are timezone-aware UTC.
+Every file starts with `exchange_timestamp` (the venue's time) and
+`local_timestamp` (when the event reached the capture machine). Where we
+captured the feed ourselves `local_timestamp` is measured; for earlier days it
+is modelled: the exchange time plus a latency drawn from our measured
+distribution. Don't use modelled days for latency research. There is no
+per-row marker: each Parquet file says which it is in its metadata
+(`aperiodic.origin = capture` for measured, `aperiodic.latency_model` for
+modelled), which `download_raw` keeps and `get_raw`'s DataFrame does not.
+Timestamps are timezone-aware UTC.
 
 Hyperliquid's derivative feed carries no exchange time, so in its
 `mark_price`, `index_price`, `funding_rate` and `open_interest` files

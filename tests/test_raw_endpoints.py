@@ -52,7 +52,6 @@ def _parquet(times: list[str]) -> bytes:
         {
             "exchange_timestamp": pa.array(stamps, pa.timestamp("us", tz="UTC")),
             "local_timestamp": pa.array(stamps, pa.timestamp("us", tz="UTC")),
-            "local_timestamp_kind": ["modelled"] * len(stamps),
             "id": [str(i) for i in range(len(stamps))],
             "side": ["buy"] * len(stamps),
             "price": [100.0 + i for i in range(len(stamps))],
