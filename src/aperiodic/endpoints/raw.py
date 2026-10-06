@@ -266,6 +266,10 @@ async def get_raw_async(
             'funding_rate' or 'open_interest'. On Hyperliquid, the last
             four have a modelled ``exchange_timestamp`` and an
             ``exchange_timestamp_kind`` column.
+            ``funding_rate`` files also carry ``next_funding_timestamp``
+            (timestamp, UTC), the venue's next funding settlement: present
+            for Binance and OKX, null on Hyperliquid, whose feed has no such
+            field.
         exchange: 'binance-futures', 'okx-perps' or 'hyperliquid-perps'.
         symbol: Atlas symbol, e.g. 'perpetual-BTC-USDT:USDT'.
         start_date: First day (exchange-time UTC).

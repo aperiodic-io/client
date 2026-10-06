@@ -245,6 +245,10 @@ Hyperliquid's derivative feed carries no exchange time, so in its
 `exchange_timestamp` is modelled from the capture time, and an
 `exchange_timestamp_kind` column (`"modelled"`) follows it.
 
+`funding_rate` files also carry `next_funding_timestamp` (timestamp, UTC): the
+venue's next funding settlement. It is present for Binance and OKX and null on
+Hyperliquid, whose feed has no such field.
+
 <!-- The raw examples use "py" fences, not "python": tests/test_readme.py runs
 python blocks containing api_key= against production, where raw data isn't live
 yet. Switch them to python once it is. -->
