@@ -19,6 +19,16 @@ from .endpoints.raw import (
     get_raw_coverage,
     get_raw_coverage_async,
 )
+from .endpoints.stream import (
+    ChannelRejection,
+    Stream,
+    StreamClosedError,
+    StreamMessage,
+    StreamSubscription,
+    StreamSubscriptionError,
+    StreamWarning,
+    stream,
+)
 from .endpoints.symbols import get_symbols, get_symbols_async
 from .types import (
     DerivativeMetric,
@@ -28,6 +38,7 @@ from .types import (
     L2Metric,
     OutputFormat,
     RawDataset,
+    StreamChannel,
     TimestampType,
     TradeMetric,
 )
@@ -35,6 +46,7 @@ from .types import (
 __all__ = [
     "APIError",
     "AperiodicDataError",
+    "ChannelRejection",
     "DerivativeMetric",
     "DownloadError",
     "Exchange",
@@ -43,6 +55,13 @@ __all__ = [
     "L2Metric",
     "OutputFormat",
     "RawDataset",
+    "Stream",
+    "StreamChannel",
+    "StreamClosedError",
+    "StreamMessage",
+    "StreamSubscription",
+    "StreamSubscriptionError",
+    "StreamWarning",
     "TimestampType",
     "TradeMetric",
     "download_raw",
@@ -63,4 +82,5 @@ __all__ = [
     "get_twap_async",
     "get_vwap",
     "get_vwap_async",
+    "stream",
 ]

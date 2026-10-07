@@ -2,6 +2,10 @@ import os
 
 DEFAULT_BASE_URL = os.environ.get("APERIODIC_API_URL") or "https://aperiodic.io/api/v1"
 
+DEFAULT_STREAM_URL = (
+    os.environ.get("APERIODIC_STREAM_URL") or "wss://stream.aperiodic.io/v1/stream"
+)
+
 # Shared public demo key. Preview data (preview=True) is served against this key
 # so users can query the whitelisted preview slice without signing up. Keep in
 # sync with the `preview@aperiodic.io` credential advertised on aperiodic.io.

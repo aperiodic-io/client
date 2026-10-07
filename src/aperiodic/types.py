@@ -80,3 +80,15 @@ class RawFilesResponse(TypedDict):
     expires_in: int
     files: list[RawFileInfo]
     missing_periods: list[str]
+
+
+class StreamChannel(TypedDict):
+    """One live channel, the object form of ``"dataset.exchange.interval"``.
+
+    Omit ``symbols`` to receive every symbol the plan allows.
+    """
+
+    dataset: str
+    exchange: Exchange
+    interval: Interval
+    symbols: NotRequired[list[str]]
