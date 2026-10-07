@@ -329,13 +329,19 @@ flagged `snapshot=True`; pass `snapshot=False` to skip those.
   channels are on the stream's `.subscription`.
 - **Refused connections** raise `APIError`: `401` for a bad key, `403` when
   the plan has no live data, `429` when all of the plan's connections are in
-  use. These are never retried.
-- **Reconnects:** a dropped connection or a server restart is re-opened with
-  exponential backoff and the same subscription (`reconnect=False` raises
-  `StreamClosedError` instead). A lapsed plan or rotated key (close code
-  4001) always raises `StreamClosedError`.
-- **At-most-once:** rows published while disconnected are not replayed. If a
-  gap matters, fill it from the REST endpoints (`get_ohlcv`, ...).
+  use. `401`, `403` and `426` are never retried. `429` is raised on the first
+  connect, but retried with backoff on a reconnect, where the dropped socket
+  may still be counted for a moment.
+- **Reconnects:** a dropped or silent connection (no frame for 75 s, the
+  server sends a heartbeat every ~30 s), a server restart or a graceful
+  server close (1000) is re-opened with exponential backoff and the same
+  subscription (`reconnect=False` raises `StreamClosedError` instead). Close
+  codes 4000-4999 (4001: plan lapsed or key rotated) and 1008 (rate limit)
+  always raise `StreamClosedError`.
+- **At-most-once:** rows published while disconnected are not replayed. Each
+  reconnect emits a `StreamWarning` and is recorded in the stream's `.gaps`,
+  a list of `(disconnected_at, reconnected_at)` UTC datetimes; if a gap
+  matters, fill it from the REST endpoints (`get_ohlcv`, ...).
 - Leaving the loop (`break`, Ctrl-C) closes the connection. To close it from
   elsewhere, keep the stream and call `.close()`, or use it as a context
   manager.

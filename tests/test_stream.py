@@ -15,6 +15,8 @@ import socket
 import subprocess
 import sys
 import threading
+import time
+import warnings
 from collections.abc import Callable
 from itertools import islice
 from pathlib import Path
@@ -64,6 +66,7 @@ class FakeStreamServer:
     def __init__(self) -> None:
         self.url = ""
         self.refuse: tuple[int, str] | None = None
+        self.refuse_next: list[tuple[int, str]] = []
         self.reject: dict[str, str] = {}
         self.scripts: list[Script] = []
         self.requests: list = []
@@ -77,6 +80,9 @@ class FakeStreamServer:
             return connection.respond(401, json.dumps({"error": "Invalid API key"}))
         if self.refuse is not None:
             status, message = self.refuse
+            return connection.respond(status, json.dumps({"error": message}))
+        if self.refuse_next:
+            status, message = self.refuse_next.pop(0)
             return connection.respond(status, json.dumps({"error": message}))
         return None
 
@@ -385,7 +391,7 @@ def test_bad_key_raises_api_error_401(server):
         (426, "Upgrade required"),
     ],
 )
-def test_refused_handshake_is_never_retried(server, status, message):
+def test_refused_first_handshake_is_final(server, status, message):
     server.refuse = (status, message)
 
     with pytest.raises(APIError) as info:
@@ -411,7 +417,14 @@ def _restart(ws, names):
     ws.close(1012, "service restart")
 
 
-@pytest.mark.parametrize("script", [_drop_socket, _restart], ids=["dropped", "1012"])
+def _drain(ws, names):
+    ws.send(_row(OHLCV, 1))
+    ws.close(1000, "draining")
+
+
+@pytest.mark.parametrize(
+    "script", [_drop_socket, _restart, _drain], ids=["dropped", "1012", "1000"]
+)
 def test_reconnects_and_resubscribes(server, script):
     server.scripts = [script, lambda ws, names: ws.send(_row(OHLCV, 2))]
 
@@ -445,7 +458,7 @@ def test_no_reconnect_when_disabled(server):
     assert len(server.subscribes) == 1
 
 
-@pytest.mark.parametrize("code", [4001, 1008])
+@pytest.mark.parametrize("code", [4001, 4003, 1008])
 def test_terminal_close_codes_are_not_reconnected(server, code):
     def close(ws, names):
         ws.send(_row(OHLCV, 1))
@@ -531,3 +544,206 @@ def test_closing_from_another_thread_ends_the_loop(server):
     assert list(stream) == []
     assert server.client_closed.wait(5)
     assert server.client_close_codes == [1000]
+
+
+# ---------------------------------------------------------------------------
+# Review findings: reconnect rules, gaps, idle detection, close races, frames
+# ---------------------------------------------------------------------------
+
+
+def test_429_after_a_drop_is_retried_until_accepted(server):
+    def drop_then_busy(ws, names):
+        server.refuse_next = [(429, "maxConnections reached")] * 3
+        _drop_socket(ws, names)
+
+    server.scripts = [drop_then_busy, lambda ws, names: ws.send(_row(OHLCV, 2))]
+
+    with pytest.warns(StreamWarning, match="reconnecting"):
+        messages = _take(_stream(server), 2)
+
+    assert [m.data["time"] for m in messages] == [1, 2]
+    assert len(server.requests) == 5
+    assert len(server.subscribes) == 2
+
+
+@pytest.mark.parametrize("status", [400, 401, 403, 404, 426])
+def test_auth_refusal_after_a_drop_is_final(server, status):
+    def drop_then_refuse(ws, names):
+        server.refuse_next = [(status, "refused")]
+        _drop_socket(ws, names)
+
+    server.scripts = [drop_then_refuse]
+
+    with pytest.raises(APIError) as info, pytest.warns(StreamWarning):
+        _take(_stream(server), 2)
+
+    assert info.value.status_code == status
+    assert len(server.requests) == 2
+
+
+def test_silent_connection_is_dropped_and_reconnected(server, monkeypatch):
+    monkeypatch.setattr(stream_module, "IDLE_TIMEOUT", 0.3)
+    server.scripts = [
+        lambda ws, names: ws.send(_row(OHLCV, 1)),
+        lambda ws, names: ws.send(_row(OHLCV, 2)),
+    ]
+
+    with pytest.warns(StreamWarning, match="No frame"):
+        messages = _take(_stream(server), 2)
+
+    assert [m.data["time"] for m in messages] == [1, 2]
+    assert len(server.subscribes) == 2
+
+
+def test_backoff_resets_only_after_a_row(server, monkeypatch):
+    attempts: list[int] = []
+
+    def record(attempt: int) -> float:
+        attempts.append(attempt)
+        return 0.0
+
+    monkeypatch.setattr(stream_module, "_reconnect_delay", record)
+    server.scripts = [
+        _drop_socket,
+        lambda ws, names: ws.socket.shutdown(socket.SHUT_RDWR),
+        lambda ws, names: ws.socket.shutdown(socket.SHUT_RDWR),
+        lambda ws, names: ws.send(_row(OHLCV, 2)),
+    ]
+
+    with pytest.warns(StreamWarning):
+        _take(_stream(server), 2)
+
+    assert attempts == [0, 1, 2]
+
+
+def test_backoff_does_not_overflow_on_a_long_outage(monkeypatch):
+    monkeypatch.undo()
+
+    assert stream_module._reconnect_delay(5000) <= stream_module.MAX_RECONNECT_DELAY
+
+
+def test_every_gap_warns_and_is_recorded(server):
+    server.scripts = [
+        _drop_socket,
+        lambda ws, names: (ws.send(_row(OHLCV, 2)), ws.close(1012)),
+        lambda ws, names: ws.send(_row(OHLCV, 3)),
+    ]
+    stream = _stream(server)
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("default")
+        messages = _take(stream, 3)
+
+    assert [m.data["time"] for m in messages] == [1, 2, 3]
+    lost = [str(w.message) for w in caught if "reconnecting" in str(w.message)]
+    assert len(lost) == 2
+    assert len(stream.gaps) == 2
+    for disconnected_at, reconnected_at in stream.gaps:
+        assert disconnected_at.tzinfo is not None
+        assert disconnected_at <= reconnected_at
+
+
+def test_partial_rejection_warns_again_on_each_reconnect(server):
+    server.reject = {OPEN_INTEREST: "not_entitled"}
+    server.scripts = [_drop_socket, lambda ws, names: ws.send(_row(OHLCV, 2))]
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("default")
+        _take(_stream(server, channels=[OPEN_INTEREST]), 2)
+
+    rejected = [str(w.message) for w in caught if "rejected" in str(w.message)]
+    assert len(rejected) == 2
+
+
+def test_close_during_connect_does_not_subscribe(server, monkeypatch):
+    stream = _stream(server)
+    connect = stream._connect
+
+    def close_while_connecting():
+        ws = connect()
+        stream.close()
+        return ws
+
+    monkeypatch.setattr(stream, "_connect", close_while_connecting)
+
+    assert list(stream) == []
+    assert server.subscribes == []
+
+
+def test_close_during_subscribe_yields_nothing(server, monkeypatch):
+    server.scripts = [lambda ws, names: ws.send(_row(OHLCV, 1))]
+    stream = _stream(server)
+    subscribe = stream._subscribe
+
+    def close_while_subscribing(ws):
+        pending = subscribe(ws)
+        stream.close()
+        return pending
+
+    monkeypatch.setattr(stream, "_subscribe", close_while_subscribing)
+
+    assert list(stream) == []
+
+
+def test_close_interrupts_the_backoff(server, monkeypatch):
+    monkeypatch.setattr(stream_module, "_reconnect_delay", lambda attempt: 30.0)
+    server.scripts = [_drop_socket]
+    stream = _stream(server)
+    iterator = iter(stream)
+    assert next(iterator).data["time"] == 1
+
+    threading.Timer(0.3, stream.close).start()
+    started = time.monotonic()
+    with pytest.warns(StreamWarning):
+        assert next(iterator, None) is None
+
+    assert time.monotonic() - started < 5
+
+
+def test_malformed_frames_warn_and_are_skipped(server):
+    def script(ws, names):
+        ws.send("not json")
+        ws.send("[1, 2]")
+        ws.send(json.dumps({"channel": OHLCV}))
+        ws.send(_row(OHLCV, 1))
+
+    server.scripts = [script]
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        [message] = _take(_stream(server), 1)
+
+    assert message.data["time"] == 1
+    malformed = [w for w in caught if issubclass(w.category, StreamWarning)]
+    assert len(malformed) == 3
+
+
+def test_unsubscribed_listing_a_channel_only_as_rejected_removes_it(server):
+    def script(ws, names):
+        ws.send(_row(OHLCV, 1))
+        ws.send(
+            json.dumps(
+                {
+                    "op": "unsubscribed",
+                    "channels": [],
+                    "rejected": [
+                        {
+                            "channel": OHLCV,
+                            "code": "not_entitled",
+                            "message": "Plan changed",
+                        }
+                    ],
+                }
+            )
+        )
+
+    server.scripts = [script]
+
+    with _stream(server) as stream:
+        iterator = iter(stream)
+        assert next(iterator).data["time"] == 1
+        with pytest.raises(StreamSubscriptionError) as info:
+            next(iterator)
+
+    assert [r.code for r in info.value.rejected] == ["not_entitled"]
+    assert stream.subscription.channels == ()

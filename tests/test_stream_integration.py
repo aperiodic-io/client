@@ -2,7 +2,8 @@
 
 Runs against production, or APERIODIC_STREAM_URL (CI sets staging before a
 release). Skipped without APERIODIC_API_KEY, which must be on a plan with live
-ohlcv.binance-futures.1m.
+ohlcv.binance-futures.1m, and when APERIODIC_STREAM_LIVE_TESTS is "0": CI runs
+them in one matrix job only.
 
 One connection serves every check: the CI matrix shares one key, and each job
 holding several sockets for a minute would run into ``maxConnections``.
@@ -26,7 +27,13 @@ pytest.importorskip("websockets")
 
 API_KEY = os.environ.get("APERIODIC_API_KEY")
 
-pytestmark = pytest.mark.skipif(not API_KEY, reason="APERIODIC_API_KEY is not set")
+pytestmark = [
+    pytest.mark.skipif(not API_KEY, reason="APERIODIC_API_KEY is not set"),
+    pytest.mark.skipif(
+        os.environ.get("APERIODIC_STREAM_LIVE_TESTS") == "0",
+        reason="live stream tests run in one CI matrix job only (APERIODIC_STREAM_LIVE_TESTS=0)",
+    ),
+]
 
 SYMBOL = "perpetual-BTC-USDT:USDT"
 OHLCV = "ohlcv.binance-futures.1m"
