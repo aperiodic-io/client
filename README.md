@@ -65,6 +65,7 @@ print(df.columns)
 | Raw data into a DataFrame | `get_raw` | `get_raw_async` | `dataset` (`RawDataset`) |
 | Raw data to disk | `download_raw` | `download_raw_async` | `dataset` (`RawDataset`) |
 | Raw coverage | `get_raw_coverage` | `get_raw_coverage_async` | — |
+| Live rows over WebSocket | `stream` | — | `dataset`, `exchange`, `interval` |
 
 ### `get_metrics` — Trade & order book metrics
 
@@ -291,6 +292,56 @@ lazy = pl.scan_parquet("raw/quotes/**/data.parquet")
 - `download_raw` needs CPython (httpx and a filesystem); in Pyodide use
   `get_raw`.
 
+## Live streaming
+
+Rows as they are published, over WebSocket, on plans with live data. Needs the
+`stream` extra:
+
+```bash
+pip install "aperiodic[stream]"
+```
+
+```python
+from aperiodic import stream
+
+for message in stream(
+    api_key="your-api-key",
+    dataset="ohlcv",
+    exchange="binance-futures",
+    interval="1m",
+    symbols=["perpetual-BTC-USDT:USDT"],  # omit for every symbol on your plan
+):
+    print(message.channel, message.snapshot, message.data["close"])
+```
+
+Each `StreamMessage` has `channel` (`"ohlcv.binance-futures.1m"`), `data` (the
+row as published; `time` is microseconds since the epoch) and `snapshot`.
+Right after subscribing, Pro plans and above get the latest row per symbol,
+flagged `snapshot=True`; pass `snapshot=False` to skip those.
+
+- **More channels:** `channels=["open_interest.okx-perps.1m", {"dataset": "ohlcv",
+  "exchange": "okx-perps", "interval": "1m", "symbols": [...]}]`, alone or
+  next to `dataset`/`exchange`/`interval`, up to 200 in all.
+- **Rejections:** if every channel is refused, `StreamSubscriptionError` is
+  raised and `.rejected` says why (`not_entitled`, `not_live`,
+  `unknown_channel`, `limit_exceeded`, `invalid_message`). If only some are,
+  a `StreamWarning` is emitted and the rest stream; the granted and rejected
+  channels are on the stream's `.subscription`.
+- **Refused connections** raise `APIError`: `401` for a bad key, `403` when
+  the plan has no live data, `429` when all of the plan's connections are in
+  use. These are never retried.
+- **Reconnects:** a dropped connection or a server restart is re-opened with
+  exponential backoff and the same subscription (`reconnect=False` raises
+  `StreamClosedError` instead). A lapsed plan or rotated key (close code
+  4001) always raises `StreamClosedError`.
+- **At-most-once:** rows published while disconnected are not replayed. If a
+  gap matters, fill it from the REST endpoints (`get_ohlcv`, ...).
+- Leaving the loop (`break`, Ctrl-C) closes the connection. To close it from
+  elsewhere, keep the stream and call `.close()`, or use it as a context
+  manager.
+- CPython only: a browser WebSocket (Pyodide, marimo) cannot send the API key
+  header.
+
 ## Performance Notes
 
 - Downloads are split into monthly parquet files server-side.
@@ -307,6 +358,7 @@ lazy = pl.scan_parquet("raw/quotes/**/data.parquet")
 - `polars`
 - `tqdm`
 - `nest-asyncio`
+- `websockets` (only for live streaming, via the `stream` extra)
 
 ## License
 

@@ -23,7 +23,7 @@ dependencies = [
   "tqdm>=4.66.0",
 ]
 description = "Client library for Aperiodic aggregate market data API - OHLCV and more"
-keywords = ["quant", "api", "ohlcv", "market-data", "crypto", "parquet", "polars", "pandas"]
+keywords = ["quant", "api", "ohlcv", "market-data", "crypto", "parquet", "polars", "pandas", "websocket", "streaming"]
 license = "MIT"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -52,6 +52,10 @@ pandas = [
   "pyarrow>=14.0.0",
   "pandas>=2.0.0",
 ]
+# Live streaming over WebSocket (aperiodic.stream). CPython only.
+stream = [
+  "websockets>=13.0",
+]
 quality = [
   "ruff>=0.1.0",
   "pre-commit>=2.20.0",
@@ -62,6 +66,7 @@ tests = [
   "pytest-asyncio>=0.21.0",
   "python-dotenv>=1.0.0",
   "respx>=0.20.0",
+  "websockets>=13.0",
 ]
 
 [tool.hatch.envs.quality]
