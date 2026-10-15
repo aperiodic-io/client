@@ -230,9 +230,10 @@ async def test_get_raw_surfaces_raw_not_in_plan(router):
     assert "not included" in info.value.message
 
 
-async def test_get_raw_preview_uses_the_demo_key(router):
+@pytest.mark.parametrize("periods", [[], ["2025-06"]], ids=["empty", "with-files"])
+async def test_get_raw_preview_uses_the_demo_key(router, periods):
     api = router.get(f"{BASE}/data/raw/preview/trades").mock(
-        return_value=httpx.Response(200, json=_listing(["2025-06"]))
+        return_value=httpx.Response(200, json=_listing(periods))
     )
     _serve_files(router)
 
@@ -245,7 +246,9 @@ async def test_get_raw_preview_uses_the_demo_key(router):
         preview=True,
     )
 
-    assert len(_column(frame, "price")) == 3
+    assert len(frame) == (3 if periods else 0)
+    if periods:
+        assert len(_column(frame, "price")) == 3
     request = api.calls.last.request
     assert request.headers["X-API-KEY"] == "DEMO-KEY"
     assert dict(request.url.params) == {"exchange": "binance-futures", "symbol": SYMBOL}
