@@ -1,4 +1,4 @@
-__version__ = "4.3.0"
+__version__ = "4.3.1"
 
 from .client import AperiodicDataError, APIError, DownloadError
 from .endpoints.derivative import get_derivative_metrics, get_derivative_metrics_async
