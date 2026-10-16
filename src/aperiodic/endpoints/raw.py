@@ -16,7 +16,7 @@ from contextlib import AsyncExitStack
 from datetime import UTC, date, datetime, time, timedelta
 from io import BytesIO
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal, overload
+from typing import TYPE_CHECKING, Any, Literal, get_args, overload
 
 from tqdm.auto import tqdm
 
@@ -137,6 +137,10 @@ class _RawRequest:
         base_url: str,
         preview: bool,
     ):
+        if dataset not in get_args(RawDataset):
+            raise AperiodicDataError(
+                f"Unknown raw dataset {dataset!r}. Valid datasets: {', '.join(get_args(RawDataset))}"
+            )
         self.api_key = api_key
         self.dataset = dataset
         self.exchange = exchange
@@ -263,8 +267,8 @@ async def get_raw_async(
         api_key: Your Aperiodic API key (Prime + Raw plan). Optional when
             preview=True.
         dataset: 'trades', 'quotes', 'mark_price', 'index_price',
-            'funding_rate' or 'open_interest'. On Hyperliquid, the last
-            four have a modelled ``exchange_timestamp`` and an
+            or 'funding_rate'. On Hyperliquid, the last
+            three have a modelled ``exchange_timestamp`` and an
             ``exchange_timestamp_kind`` column.
         exchange: 'binance-futures', 'okx-perps' or 'hyperliquid-perps'.
         symbol: Atlas symbol, e.g. 'perpetual-BTC-USDT:USDT'.

@@ -61,7 +61,6 @@ RawDataset = Literal[
     "mark_price",
     "index_price",
     "funding_rate",
-    "open_interest",
 ]
 
 
