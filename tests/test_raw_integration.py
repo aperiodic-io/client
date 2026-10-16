@@ -44,10 +44,14 @@ def _column(frame, name: str) -> list:
     return column.to_list() if HAS_POLARS else column.tolist()
 
 
-def test_coverage_lists_the_six_datasets():
+def test_coverage_lists_every_supported_raw_dataset():
     body = aperiodic.get_raw_coverage(base_url=DEFAULT_BASE_URL)
 
-    assert [d["id"] for d in body["datasets"]] == list(get_args(RawDataset))
+    # The server may advertise channels this client does not support.
+    supported = get_args(RawDataset)
+    assert [d["id"] for d in body["datasets"] if d["id"] in supported] == list(
+        supported
+    )
     btc = body["coverage"]["datasets"]["trades"]["binance-futures"][PARAMS["symbol"]]
     assert btc["first"] <= "2025-06-01"
     assert btc["last"] >= "2025-06-30"

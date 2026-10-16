@@ -229,14 +229,14 @@ symbols as the metrics. History is one Parquet file per calendar month; from
 2026-08-01 there is one file per day.
 
 **Datasets** (`RawDataset`): `"trades"`, `"quotes"`, `"mark_price"`,
-`"index_price"`, `"funding_rate"`, `"open_interest"`, on every venue.
+`"index_price"` and `"funding_rate"`, on every venue.
 
 Every file starts with `exchange_timestamp` (the venue's time) and
 `local_timestamp` (when the event reached our capture machine). Timestamps are
 timezone-aware UTC.
 
 Hyperliquid's derivative feed carries no exchange time, so in its
-`mark_price`, `index_price`, `funding_rate` and `open_interest` files
+`mark_price`, `index_price` and `funding_rate` files
 `exchange_timestamp` is modelled from the capture time, and an
 `exchange_timestamp_kind` column (`"modelled"`) follows it.
 

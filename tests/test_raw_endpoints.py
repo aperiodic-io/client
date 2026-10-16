@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 from datetime import UTC, date, datetime
 from io import BytesIO
+from typing import get_args
 
 import httpx
 import pytest
@@ -22,7 +23,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 import aperiodic
-from aperiodic import APIError, DownloadError
+from aperiodic import AperiodicDataError, APIError, DownloadError
 from aperiodic._compat import HAS_POLARS
 from aperiodic.endpoints import raw as raw_module
 from aperiodic.endpoints.raw import (
@@ -31,6 +32,7 @@ from aperiodic.endpoints.raw import (
     get_raw_coverage_async,
     raw_file_path,
 )
+from aperiodic.types import DerivativeMetric, RawDataset
 
 BASE = "https://api.test/api/v1"
 OUTPUT = "polars" if HAS_POLARS else "pandas"
@@ -412,3 +414,37 @@ def test_download_error_names_the_day():
     error = DownloadError(2026, 8, RuntimeError("boom"), day=10)
     assert "2026-08-10" in str(error)
     assert json.dumps({"day": error.day}) == '{"day": 10}'
+
+
+def test_raw_datasets_exclude_open_interest_but_metrics_keep_it():
+    assert get_args(RawDataset) == (
+        "trades",
+        "quotes",
+        "mark_price",
+        "index_price",
+        "funding_rate",
+    )
+    assert "open_interest" in get_args(DerivativeMetric)
+
+
+@pytest.mark.parametrize("preview", [False, True])
+@pytest.mark.parametrize("download", [False, True])
+@respx.mock
+async def test_raw_open_interest_is_rejected_before_request(
+    tmp_path, preview, download
+):
+    params = {
+        **PARAMS,
+        "dataset": "open_interest",
+        "start_date": date(2025, 6, 1),
+        "end_date": date(2025, 6, 2),
+        "preview": preview,
+    }
+    request = (
+        download_raw_async(**params, output_dir=tmp_path)
+        if download
+        else get_raw_async(**params, output=OUTPUT)
+    )
+    with pytest.raises(AperiodicDataError, match="Unknown raw dataset 'open_interest'"):
+        await request
+    assert not respx.calls
