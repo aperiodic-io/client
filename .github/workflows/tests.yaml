@@ -18,9 +18,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os:
-          - ubuntu-latest
-          - macos-latest
+        # A staging dispatch (base_url set, from unravel-router's release) checks
+        # the API, so it runs on Ubuntu only: macOS runners queue for long
+        # enough to time out the release's 20-minute wait. Pushes test both.
+        os: ${{ inputs.base_url && fromJSON('["ubuntu-latest"]') || fromJSON('["ubuntu-latest", "macos-latest"]') }}
         python-version:
           # - "3.11"
           - "3.12"
