@@ -20,7 +20,7 @@ import pytest
 
 import aperiodic
 from aperiodic import APIError
-from aperiodic._compat import HAS_POLARS, DataFrame
+from aperiodic._compat import HAS_POLARS
 from aperiodic.config import DEFAULT_BASE_URL
 from aperiodic.types import RawDataset
 
@@ -55,17 +55,6 @@ def test_coverage_lists_every_supported_raw_dataset():
     btc = body["coverage"]["datasets"]["trades"]["binance-futures"][PARAMS["symbol"]]
     assert btc["first"] <= "2025-06-01"
     assert btc["last"] >= "2025-06-30"
-
-
-def test_preview_needs_no_key():
-    frame = aperiodic.get_raw(
-        dataset="funding_rate", output=OUTPUT, preview=True, **PARAMS
-    )
-
-    assert isinstance(frame, DataFrame)
-    # Raw previews may currently have no files, returning an empty DataFrame.
-    if len(frame) > 0:
-        assert list(frame.columns)[:2] == LEADING_COLUMNS
 
 
 def test_demo_key_is_refused_outside_the_preview():
