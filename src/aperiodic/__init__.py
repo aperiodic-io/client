@@ -1,5 +1,6 @@
 __version__ = "4.3.1"
 
+from .auth import LoginResult, credentials_path, default_api_key, login, logout, whoami
 from .client import AperiodicDataError, APIError, DownloadError
 from .endpoints.derivative import get_derivative_metrics, get_derivative_metrics_async
 from .endpoints.market_data import (
@@ -45,6 +46,12 @@ from .types import (
 
 __all__ = [
     "APIError",
+    "LoginResult",
+    "credentials_path",
+    "default_api_key",
+    "login",
+    "logout",
+    "whoami",
     "AperiodicDataError",
     "ChannelRejection",
     "DerivativeMetric",

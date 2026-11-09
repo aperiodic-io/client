@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from tqdm.auto import tqdm
 
 from .._compat import get_backend_module
+from ..auth import default_api_key
 from ..client import AperiodicDataError, download_parquet_bytes, fetch_json
 from ..config import (
     DEFAULT_BASE_URL,
@@ -32,16 +33,20 @@ if TYPE_CHECKING:
 def _resolve_api_key(api_key: str | None, preview: bool) -> str:
     """Resolve the effective API key for a data request.
 
-    Preview data is served against a shared demo key, so ``api_key`` may be
-    omitted when ``preview=True``. A key is always required otherwise.
+    A key passed in wins. Preview data is served against a shared demo key, so
+    a preview request without one needs no account. Otherwise the key comes
+    from ``APERIODIC_API_KEY`` or the one ``aperiodic.login()`` saved.
     """
     if api_key:
         return api_key
     if preview:
         return DEMO_API_KEY
+    if saved := default_api_key():
+        return saved
     raise AperiodicDataError(
-        "api_key is required. Pass your Aperiodic API key, or set preview=True "
-        "to query the free preview datasets with the shared demo key."
+        "No API key. Run aperiodic.login() once on this machine (a free account "
+        "covers every metric for 2025), set APERIODIC_API_KEY, or pass api_key=. "
+        "preview=True needs no key."
     )
 
 

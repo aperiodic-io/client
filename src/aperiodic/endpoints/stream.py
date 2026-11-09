@@ -27,6 +27,7 @@ from importlib.util import find_spec
 from itertools import chain, count
 from typing import TYPE_CHECKING, Any
 
+from ..auth import default_api_key
 from .. import __version__
 from ..client import AperiodicDataError, APIError
 from ..config import DEFAULT_STREAM_URL, RETRY_BACKOFF_BASE, get_headers
@@ -570,8 +571,11 @@ def stream(
             "Live streaming needs the websockets package. Install with: "
             "pip install aperiodic[stream]"
         )
+    api_key = api_key or default_api_key()
     if not api_key:
-        raise AperiodicDataError("api_key is required to stream live data.")
+        raise AperiodicDataError(
+            "No API key. Run aperiodic.login(), set APERIODIC_API_KEY, or pass api_key=."
+        )
 
     return Stream(
         api_key,

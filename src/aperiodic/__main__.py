@@ -1,0 +1,57 @@
+"""``python -m aperiodic login | logout | whoami``, for machines without the Aperiodic CLI."""
+
+from __future__ import annotations
+
+import argparse
+import sys
+
+from .auth import credentials_path, login, logout, whoami
+from .client import AperiodicDataError
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(prog="python -m aperiodic")
+    commands = parser.add_subparsers(dest="command", required=True)
+    login_cmd = commands.add_parser(
+        "login", help="Sign in and save a key for this machine"
+    )
+    login_cmd.add_argument("--name", help="Name for this machine's key")
+    login_cmd.add_argument(
+        "--no-browser",
+        action="store_true",
+        help="Print the link instead of opening a browser",
+    )
+    commands.add_parser("logout", help="Revoke this machine's key and remove it")
+    commands.add_parser(
+        "whoami", help="Show which key is in use and what the plan covers"
+    )
+    args = parser.parse_args(argv)
+
+    try:
+        if args.command == "login":
+            login(args.name, open_browser=False if args.no_browser else None)
+        elif args.command == "logout":
+            print(
+                "Signed out." if logout() else f"Not signed in ({credentials_path()})."
+            )
+        else:
+            me = whoami()
+            covers = me.get("covers", {})
+            key = me.get("key", {})
+            print(f"Plan:     {me.get('plan_name')}")
+            print(f"Key:      {key.get('name') or key.get('kind')}")
+            print(
+                f"Datasets: {covers.get('datasets_in_full')} of {covers.get('datasets_total')} in full"
+            )
+            if covers.get("history"):
+                print(f"History:  {covers['history']}")
+            if covers.get("live"):
+                print(f"Live:     {covers['live']}")
+    except AperiodicDataError as error:
+        print(f"Error: {error}", file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

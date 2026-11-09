@@ -20,7 +20,21 @@ pip install -e .
 
 ## Authentication
 
-All endpoints require your [Aperiodic.io](https://aperiodic.io) API key passed as `api_key="..."`.
+Sign in once per machine, from Python or a terminal:
+
+```python
+import aperiodic
+
+aperiodic.login()  # prints a link and a code; open it on any device and allow it
+```
+
+```bash
+python -m aperiodic login   # or `aperiodic login` with the Aperiodic CLI
+```
+
+This works on a laptop, over SSH and in a remote notebook: the link opens on whatever device you have at hand. A free account works, and covers every metric for 2025. The machine gets a key of its own, saved in `~/.config/aperiodic/credentials` (the Aperiodic CLI uses the same file), which you can revoke at [aperiodic.io/home/api](https://aperiodic.io/home/api). `aperiodic.whoami()` shows which key is in use and what the plan covers; `aperiodic.logout()` revokes it.
+
+After that, calls find the key on their own, so `api_key=` can be left out. The order is: an `api_key="..."` you pass, then the `APERIODIC_API_KEY` environment variable, then the saved key. For scheduled jobs and CI, make a named key at [aperiodic.io/home/api](https://aperiodic.io/home/api) and set `APERIODIC_API_KEY`.
 
 The one exception is [preview data](#preview-no-subscription-required): with `preview=True` the `api_key` is optional — omit it and the shared public demo key is used automatically.
 
