@@ -1,12 +1,15 @@
-"""Live data over WebSocket: rows as they are published, at most once.
+"""Live data over WebSocket: rows as they are published.
 
 ``stream`` subscribes to one or more channels on the stream service and yields
 every row as it arrives. A channel is a ``dataset.exchange.interval`` triple,
 e.g. ``ohlcv.binance-futures.1m``, optionally narrowed to some symbols.
 
-Delivery is at-most-once with no replay: rows published while the connection
-is down are not sent again after a reconnect. Fill such gaps from the REST
-endpoints (``get_ohlcv``, ``get_metrics``, ...).
+On 1m and longer intervals the server keeps recent bars and replays them to a
+subscribe that asks (``since``): a reconnect asks for the bars since the newest
+one received, so rows published while the connection was down arrive first,
+flagged ``replay=True``. Below 1m, and past what the server keeps, delivery is
+at most once: fill such gaps from the REST endpoints (``get_ohlcv``,
+``get_metrics``, ...).
 
 Needs the ``stream`` extra (``pip install aperiodic[stream]``) and CPython; the
 browser WebSocket API used by Pyodide cannot send the ``X-API-KEY`` header.
@@ -22,7 +25,7 @@ import time
 import warnings
 from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from importlib.util import find_spec
 from itertools import chain, count
 from typing import TYPE_CHECKING, Any
@@ -50,6 +53,30 @@ OPEN_TIMEOUT = 10.0
 IDLE_TIMEOUT = 75.0
 
 MAX_RECONNECT_DELAY = 30.0
+
+# One replay frame carries a whole bar, over a megabyte on an all-symbols
+# channel; the websockets default of 1 MiB would close the socket on it.
+MAX_MESSAGE_BYTES = 16 * 2**20
+
+# The intervals the server keeps bars for, with their length in milliseconds.
+# A since on any other interval is refused.
+REPLAY_STEPS_MS = {
+    "1m": 60_000,
+    "5m": 300_000,
+    "15m": 900_000,
+    "30m": 1_800_000,
+    "1h": 3_600_000,
+    "4h": 14_400_000,
+    "1d": 86_400_000,
+}
+
+# A subscribe refused while the server is busy replaying (after it restarts)
+# is sent again after this pause, plus as much again at random, this often;
+# then without the replay. A replay cut short at the server's size cap is
+# followed up from the next bar at most this often.
+BUSY_PAUSE = 1.0
+BUSY_RETRIES = 5
+MAX_CONTINUATIONS = 50
 
 # A session that stayed up this long, or delivered a row, resets the backoff.
 HEALTHY_SESSION = 60.0
@@ -84,12 +111,36 @@ class StreamMessage:
     ``data`` is the row exactly as published, e.g. for OHLCV ``symbol``,
     ``interval``, ``time`` (microseconds since the epoch), ``open``, ...
     ``snapshot`` marks the latest row per symbol sent right after subscribing
-    (Pro plans and above, best-effort), as opposed to a newly published one.
+    (best-effort), as opposed to a newly published one. ``replay`` marks a row
+    from the history the server replays before the live rows. A row can come
+    both replayed and live: it has the same key, so overwrite it.
     """
 
     channel: str
     data: dict[str, Any]
     snapshot: bool = False
+    replay: bool = False
+
+
+@dataclass(frozen=True)
+class StreamReplay:
+    """The server's account of one channel's replay.
+
+    ``start`` and ``end`` are the first and last bar sent (open times, UTC);
+    ``missing`` lists bars the server does not hold, to fetch from the REST
+    endpoints. ``truncated`` means the server stopped at its size cap and the
+    stream asks for the rest. ``unavailable`` means the history could not be
+    read at all: fill the gap from the REST endpoints.
+    """
+
+    channel: str
+    start: datetime | None
+    end: datetime | None
+    bars: int
+    rows: int
+    missing: tuple[datetime, ...] = ()
+    truncated: bool = False
+    unavailable: bool = False
 
 
 @dataclass(frozen=True)
@@ -156,6 +207,51 @@ def _now() -> datetime:
     return datetime.now(UTC)
 
 
+def _from_ms(ms: Any) -> datetime | None:
+    return (
+        datetime.fromtimestamp(ms / 1000, UTC) if isinstance(ms, int | float) else None
+    )
+
+
+def _bar_ms(value: Any) -> int | None:
+    """A row's ``time`` (microseconds on the topics) in epoch milliseconds."""
+    if isinstance(value, bool) or not isinstance(value, int | float) or value <= 0:
+        return None
+    if value >= 1e17:
+        return int(value // 1_000_000)
+    if value >= 1e14:
+        return int(value // 1_000)
+    if value >= 1e11:
+        return int(value)
+    return int(value * 1_000)
+
+
+def _channel_name(channel: str | StreamChannel) -> str:
+    if isinstance(channel, str):
+        return channel
+    return f"{channel['dataset']}.{channel['exchange']}.{channel['interval']}"
+
+
+def _with_since(channel: str | StreamChannel, since: int | None) -> str | StreamChannel:
+    """The channel in the form a subscribe sends, asking for bars from ``since``."""
+    if isinstance(channel, str):
+        if since is None:
+            return channel
+        dataset, exchange, interval = channel.split(".")
+        return {
+            "dataset": dataset,
+            "exchange": exchange,
+            "interval": interval,
+            "since": since,
+        }
+    copy: StreamChannel = {
+        key: value for key, value in channel.items() if key != "since"
+    }  # type: ignore[assignment]
+    if since is not None:
+        copy["since"] = since
+    return copy
+
+
 def _parse(raw: str | bytes) -> dict[str, Any] | None:
     """A frame as a dict, or ``None`` (with a warning) when it is not one."""
     try:
@@ -218,9 +314,12 @@ class Stream:
     rejected channels), ``None`` until the first one arrives.
 
     ``gaps`` lists every outage bridged by a reconnect as
-    ``(disconnected_at, reconnected_at)`` UTC datetimes. Delivery is
-    at-most-once, so rows published in a gap are lost; fetch them from the
-    REST endpoints if you need them.
+    ``(disconnected_at, reconnected_at)`` UTC datetimes. On 1m and longer
+    intervals a reconnect replays the bars missed in it (``replays`` says what
+    came back and what is missing); below 1m the rows published in a gap are
+    lost, so fetch them from the REST endpoints if you need them.
+
+    ``replays`` holds a ``StreamReplay`` for every replay the server ran.
     """
 
     def __init__(
@@ -231,6 +330,8 @@ class Stream:
         snapshot: bool,
         reconnect: bool,
         stream_url: str,
+        since: int | None = None,
+        replay: bool = True,
     ):
         self.subscription: StreamSubscription | None = None
         self._api_key = api_key
@@ -238,7 +339,15 @@ class Stream:
         self._snapshot = snapshot
         self._reconnect = reconnect
         self._stream_url = stream_url
+        self._since = since
+        self._replay = replay
         self.gaps: list[tuple[datetime, datetime]] = []
+        self.replays: list[StreamReplay] = []
+        # Each channel's newest bar received (epoch ms), and when the last
+        # session subscribed: where a reconnect's replay starts.
+        self._last_bar: dict[str, int] = {}
+        self._subscribed_at: int | None = None
+        self._follow_ups: list[str | StreamChannel] = []
         self._ws: ClientConnection | None = None
         self._closed = threading.Event()
         self._request_ids = count(1)
@@ -303,9 +412,16 @@ class Stream:
                     self._drops += 1
                     warnings.warn(
                         f"Stream connection lost at {disconnected_at:%Y-%m-%d %H:%M:%S} "
-                        f"UTC (drop {self._drops}: {exc}); reconnecting. Rows "
-                        "published meanwhile are not replayed: see Stream.gaps "
-                        "and fill them from the REST endpoints if you need them.",
+                        f"UTC (drop {self._drops}: {exc}); reconnecting. "
+                        + (
+                            "Bars missed meanwhile on 1m and longer intervals are "
+                            "replayed (see Stream.replays); fill anything else "
+                            "from the REST endpoints if you need it."
+                            if self._replay
+                            else "Rows published meanwhile are not replayed: see "
+                            "Stream.gaps and fill them from the REST endpoints if "
+                            "you need them."
+                        ),
                         StreamWarning,
                         stacklevel=2,
                     )
@@ -324,11 +440,35 @@ class Stream:
                 additional_headers=get_headers(self._api_key),
                 user_agent_header=f"aperiodic-python/{__version__}",
                 open_timeout=OPEN_TIMEOUT,
+                max_size=MAX_MESSAGE_BYTES,
             )
         except InvalidStatus as exc:
             raise _handshake_error(exc.response) from None
         except InvalidHandshake as exc:
             raise ConnectionError(f"WebSocket handshake failed: {exc}") from exc
+
+    def _subscribe_channels(self, resume: bool) -> list[str | StreamChannel]:
+        """The channels to subscribe with, each asking for bars from where it
+        should replay: ``since`` on the first session; on a reconnect the newest
+        bar received, or one bar before the last subscribe when none came."""
+        channels: list[str | StreamChannel] = []
+        for channel in self._channels:
+            name = _channel_name(channel)
+            step = REPLAY_STEPS_MS.get(name.rsplit(".", 1)[-1])
+            since: int | None = None
+            if step is not None and not resume:
+                since = (
+                    self._since
+                    if self._since is not None
+                    else (channel.get("since") if isinstance(channel, dict) else None)
+                )
+            elif step is not None and self._replay:
+                if name in self._last_bar:
+                    since = self._last_bar[name]
+                elif self._subscribed_at is not None:
+                    since = self._subscribed_at - step
+            channels.append(_with_since(channel, since))
+        return channels
 
     def _subscribe(self, ws: ClientConnection) -> list[StreamMessage]:
         """Send the subscription and wait for its ack. Returns rows that came first."""
@@ -336,13 +476,15 @@ class Stream:
 
         request_id = f"s{next(self._request_ids)}"
         pending: list[StreamMessage] = []
+        # A session has subscribed before: this one resumes after a drop.
+        channels = self._subscribe_channels(resume=self._subscribed_at is not None)
+        busy = 0
         deadline = time.monotonic() + OPEN_TIMEOUT
         try:
             ws.send(
-                json.dumps(
-                    {"op": "subscribe", "id": request_id, "channels": self._channels}
-                )
+                json.dumps({"op": "subscribe", "id": request_id, "channels": channels})
             )
+            self._subscribed_at = int(time.time() * 1000)
             while True:
                 try:
                     raw = ws.recv(timeout=max(deadline - time.monotonic(), 0))
@@ -358,12 +500,39 @@ class Stream:
                         self._acknowledge(frame, request_id)
                         return pending
                     if frame.get("op") == "error":
+                        if frame.get("code") == "limit_exceeded" and any(
+                            isinstance(c, dict) and "since" in c for c in channels
+                        ):
+                            # Too many replays at once on the server: try again
+                            # after a jittered pause, then without the replay.
+                            busy += 1
+                            if busy > BUSY_RETRIES:
+                                channels = [_with_since(c, None) for c in channels]
+                                warnings.warn(
+                                    "The stream stayed too busy to replay; subscribing "
+                                    "without it. Fill the gap from the REST endpoints.",
+                                    StreamWarning,
+                                    stacklevel=2,
+                                )
+                            elif self._closed.wait(
+                                BUSY_PAUSE + random.uniform(0, BUSY_PAUSE)
+                            ):
+                                return pending
+                            ws.send(
+                                json.dumps(
+                                    {
+                                        "op": "subscribe",
+                                        "id": request_id,
+                                        "channels": channels,
+                                    }
+                                )
+                            )
+                            deadline = time.monotonic() + OPEN_TIMEOUT
+                            continue
                         raise StreamSubscriptionError(
                             f"Subscription refused ({frame.get('code')}): {frame.get('message')}"
                         )
-                message = self._handle(frame)
-                if message is not None:
-                    pending.append(message)
+                pending.extend(self._handle(frame))
         except ConnectionClosed as exc:
             raise _closed_error(exc) from None
 
@@ -398,13 +567,40 @@ class Stream:
             except ConnectionClosed as exc:
                 raise _closed_error(exc) from None
             frame = _parse(raw)
-            message = self._handle(frame) if frame is not None else None
-            if message is not None:
-                yield message
+            if frame is not None:
+                yield from self._handle(frame)
+            while self._follow_ups:
+                channel = self._follow_ups.pop(0)
+                ws.send(
+                    json.dumps(
+                        {
+                            "op": "subscribe",
+                            "id": f"r{next(self._request_ids)}",
+                            "channels": [channel],
+                        }
+                    )
+                )
 
-    def _handle(self, frame: dict[str, Any]) -> StreamMessage | None:
-        """A data frame becomes a message; control frames are acted on."""
+    def _handle(self, frame: dict[str, Any]) -> list[StreamMessage]:
+        """Data and replay frames become messages; control frames are acted on."""
         op = frame.get("op")
+        if op is None and "channel" in frame and frame.get("replay"):
+            rows = frame.get("data")
+            if not isinstance(rows, list):
+                warnings.warn(
+                    f"Skipped a replay frame without rows on {frame['channel']!r}",
+                    StreamWarning,
+                    stacklevel=2,
+                )
+                return []
+            messages = [
+                StreamMessage(frame["channel"], row, replay=True)
+                for row in rows
+                if isinstance(row, dict)
+            ]
+            for message in messages:
+                self._note_bar(message)
+            return messages
         if op is None and "channel" in frame:
             if not isinstance(frame.get("data"), dict):
                 warnings.warn(
@@ -412,12 +608,17 @@ class Stream:
                     StreamWarning,
                     stacklevel=2,
                 )
-                return None
+                return []
             snapshot = bool(frame.get("snapshot", False))
             if snapshot and not self._snapshot:
-                return None
-            return StreamMessage(frame["channel"], frame["data"], snapshot)
-        if op == "error":
+                return []
+            message = StreamMessage(frame["channel"], frame["data"], snapshot)
+            if not snapshot:
+                self._note_bar(message)
+            return [message]
+        if op == "replayed":
+            self._replayed(frame)
+        elif op == "error":
             warnings.warn(
                 f"Stream error ({frame.get('code')}): {frame.get('message')}",
                 StreamWarning,
@@ -425,8 +626,62 @@ class Stream:
             )
         elif op == "unsubscribed":
             self._unsubscribed(frame)
-        # heartbeat, pong and any op this client does not know need nothing.
-        return None
+        # heartbeat, pong, a follow-up's ack and any op this client does not
+        # know need nothing.
+        return []
+
+    def _note_bar(self, message: StreamMessage) -> None:
+        ms = _bar_ms(message.data.get("time"))
+        if ms is not None and ms > self._last_bar.get(message.channel, 0):
+            self._last_bar[message.channel] = ms
+
+    def _replayed(self, frame: dict[str, Any]) -> None:
+        channel = str(frame.get("channel", ""))
+        missing = tuple(
+            at for at in (_from_ms(ms) for ms in frame.get("missing") or []) if at
+        )
+        replay = StreamReplay(
+            channel=channel,
+            start=_from_ms(frame.get("from")) if frame.get("bars") else None,
+            end=_from_ms(frame.get("to")),
+            bars=int(frame.get("bars") or 0),
+            rows=int(frame.get("rows") or 0),
+            missing=missing,
+            truncated=bool(frame.get("truncated")),
+            unavailable=bool(frame.get("unavailable")),
+        )
+        self.replays.append(replay)
+        if replay.unavailable:
+            warnings.warn(
+                f"The replay of {channel} is unavailable; fill the gap from the REST endpoints.",
+                StreamWarning,
+                stacklevel=2,
+            )
+        elif missing:
+            warnings.warn(
+                f"The replay of {channel} misses {len(missing)} bar(s) the server "
+                f"does not hold, from {missing[0]:%Y-%m-%d %H:%M} UTC; fetch them "
+                "from the REST endpoints.",
+                StreamWarning,
+                stacklevel=2,
+            )
+        # Cut short at the server's size cap: ask for the rest from the next bar.
+        step = REPLAY_STEPS_MS.get(channel.rsplit(".", 1)[-1])
+        to = frame.get("to")
+        follow_ups = sum(
+            1 for r in self.replays if r.channel == channel and r.truncated
+        )
+        if (
+            replay.truncated
+            and step
+            and isinstance(to, int)
+            and follow_ups <= MAX_CONTINUATIONS
+        ):
+            source = next(
+                (c for c in self._channels if _channel_name(c) == channel), None
+            )
+            if source is not None:
+                self._follow_ups.append(_with_since(source, to + step))
 
     def _unsubscribed(self, frame: dict[str, Any]) -> None:
         rejected = _rejections(frame.get("rejected") or [])
@@ -499,6 +754,8 @@ def stream(
     snapshot: bool = True,
     reconnect: bool = True,
     stream_url: str = DEFAULT_STREAM_URL,
+    since: datetime | timedelta | None = None,
+    replay: bool = True,
 ) -> Stream:
     """
     Stream live rows over WebSocket as they are published.
@@ -508,14 +765,18 @@ def stream(
     yields a ``StreamMessage`` per row. The connection opens when iteration
     starts and closes when the loop is left.
 
-    Delivery is at-most-once with no replay. With ``reconnect=True`` a dropped
-    or silent connection (no frame for 75 s), a server restart or a graceful
-    server close (1000) is re-opened with exponential backoff and the same
-    subscription, emitting a ``StreamWarning`` and adding the outage to
-    ``Stream.gaps``; rows published meanwhile are lost, so fill the gap from
-    the REST endpoints if you need it. Close codes 4000-4999 (4001: plan
-    lapsed or key rotated) and 1008 (rate limit exhausted) raise
-    ``StreamClosedError`` and are never reconnected.
+    With ``reconnect=True`` a dropped or silent connection (no frame for 75 s),
+    a server restart or a graceful server close (1000) is re-opened with
+    exponential backoff and the same subscription, emitting a
+    ``StreamWarning`` and adding the outage to ``Stream.gaps``. With
+    ``replay=True`` the reconnect also asks for each 1m-or-longer channel's
+    bars since the newest one received, so rows published meanwhile arrive
+    first, flagged ``replay=True`` (the server keeps 1 h of 1m to 30m bars,
+    3 h of 1h, the newest 4h bar and 48 h of 1d). Below 1m, or past that,
+    rows published in a gap are lost: fill it from the REST endpoints if you
+    need it. Close codes 4000-4999 (4001: plan lapsed or key rotated) and 1008
+    (rate limit exhausted) raise ``StreamClosedError`` and are never
+    reconnected.
 
     Needs ``pip install aperiodic[stream]`` and CPython (not Pyodide).
 
@@ -528,9 +789,15 @@ def stream(
             ``["perpetual-BTC-USDT:USDT"]``. Omit for every symbol.
         channels: More channels, each ``"dataset.exchange.interval"`` or a
             ``StreamChannel`` dict with optional ``symbols``. Up to 200 in all.
-        snapshot: Yield the latest row per symbol sent right after subscribing
-            (Pro plans and above), flagged ``snapshot=True``. Default ``True``.
+        snapshot: Yield the latest row per symbol sent right after subscribing,
+            flagged ``snapshot=True``. Default ``True``.
         reconnect: Re-open dropped connections. Default ``True``.
+        since: Replay the bars from this time on (a UTC ``datetime``, or a
+            ``timedelta`` back from now) before the live rows, on 1m and longer
+            channels. A channel dict may carry its own ``since`` (epoch ms)
+            instead. Default: no replay on the first connect.
+        replay: After a reconnect, replay the bars missed while disconnected.
+            Default ``True``.
         stream_url: Stream endpoint (default: ``wss://stream.aperiodic.io/v1/stream``,
             or ``APERIODIC_STREAM_URL``).
 
@@ -573,10 +840,28 @@ def stream(
     if not api_key:
         raise AperiodicDataError("api_key is required to stream live data.")
 
+    requested = _requested_channels(dataset, exchange, interval, symbols, channels)
+    since_ms: int | None = None
+    if since is not None:
+        at = _now() - since if isinstance(since, timedelta) else since
+        if at.tzinfo is None:
+            raise AperiodicDataError(
+                "since must be timezone-aware, e.g. datetime(..., tzinfo=UTC)."
+            )
+        since_ms = int(at.timestamp() * 1000)
+        if not any(
+            _channel_name(c).rsplit(".", 1)[-1] in REPLAY_STEPS_MS for c in requested
+        ):
+            raise AperiodicDataError(
+                "since needs a channel at 1m or longer: the server keeps no bars below a minute."
+            )
+
     return Stream(
         api_key,
-        _requested_channels(dataset, exchange, interval, symbols, channels),
+        requested,
         snapshot=snapshot,
         reconnect=reconnect,
         stream_url=stream_url,
+        since=since_ms,
+        replay=replay,
     )
