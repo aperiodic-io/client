@@ -27,8 +27,8 @@ from importlib.util import find_spec
 from itertools import chain, count
 from typing import TYPE_CHECKING, Any
 
-from ..auth import default_api_key
 from .. import __version__
+from ..auth import default_api_key
 from ..client import AperiodicDataError, APIError
 from ..config import DEFAULT_STREAM_URL, RETRY_BACKOFF_BASE, get_headers
 from ..types import Exchange, Interval, StreamChannel

@@ -46,12 +46,6 @@ from .types import (
 
 __all__ = [
     "APIError",
-    "LoginResult",
-    "credentials_path",
-    "default_api_key",
-    "login",
-    "logout",
-    "whoami",
     "AperiodicDataError",
     "ChannelRejection",
     "DerivativeMetric",
@@ -60,6 +54,7 @@ __all__ = [
     "Interval",
     "L1Metric",
     "L2Metric",
+    "LoginResult",
     "OutputFormat",
     "RawDataset",
     "Stream",
@@ -71,6 +66,8 @@ __all__ = [
     "StreamWarning",
     "TimestampType",
     "TradeMetric",
+    "credentials_path",
+    "default_api_key",
     "download_raw",
     "download_raw_async",
     "get_derivative_metrics",
@@ -89,5 +86,8 @@ __all__ = [
     "get_twap_async",
     "get_vwap",
     "get_vwap_async",
+    "login",
+    "logout",
     "stream",
+    "whoami",
 ]
