@@ -95,7 +95,11 @@ class FakeAperiodic:
                                 "name": "research-vm",
                                 "hint": "kkkk",
                             },
-                            "covers": {"datasets_in_full": 19, "datasets_total": 19},
+                            "covers": {
+                                "datasets_in_full": 19,
+                                "datasets_total": 19,
+                                "markets": "BTC, ETH, SOL and 10 RWA perps",
+                            },
                         },
                     )
                 return self._reply(404, {})
@@ -217,7 +221,9 @@ def test_whoami_and_the_command_line(server, capsys):
 
     assert whoami()["plan_name"] == "Free"
     assert main(["whoami"]) == 0
-    assert "19 of 19" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert "19 of 19" in out
+    assert "Markets:  BTC, ETH, SOL and 10 RWA perps" in out
 
 
 def test_login_helpers_are_exported():

@@ -45,8 +45,8 @@ def _resolve_api_key(api_key: str | None, preview: bool) -> str:
         return saved
     raise AperiodicDataError(
         "No API key. Run aperiodic.login() once on this machine (a free account "
-        "covers every metric for 2025), set APERIODIC_API_KEY, or pass api_key=. "
-        "preview=True needs no key."
+        "covers every metric for 2025 on BTC, ETH, SOL and 10 RWA perps), set "
+        "APERIODIC_API_KEY, or pass api_key=. preview=True needs no key."
     )
 
 

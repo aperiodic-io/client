@@ -43,6 +43,8 @@ def main(argv: list[str] | None = None) -> int:
             print(
                 f"Datasets: {covers.get('datasets_in_full')} of {covers.get('datasets_total')} in full"
             )
+            if covers.get("markets"):
+                print(f"Markets:  {covers['markets']}")
             if covers.get("history"):
                 print(f"History:  {covers['history']}")
             if covers.get("live"):

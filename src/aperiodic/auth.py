@@ -146,7 +146,7 @@ def login(
 
     Prints a link and a code: open the link on any device, check the code
     matches, and allow it. A free account works, and covers every metric for
-    2025. The key is named after this machine (``name`` overrides it) and can
+    2025 on BTC, ETH, SOL and 10 RWA perps. The key is named after this machine (``name`` overrides it) and can
     be revoked at aperiodic.io/home/api.
 
     Args:
