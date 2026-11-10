@@ -383,6 +383,44 @@ def test_bad_key_raises_api_error_401(server):
     assert len(server.requests) == 1
 
 
+def _save_key(monkeypatch, tmp_path: Path, key: str) -> None:
+    monkeypatch.setenv("APERIODIC_CONFIG_DIR", str(tmp_path))
+    monkeypatch.delenv("APERIODIC_API_KEY", raising=False)
+    (tmp_path / "credentials").write_text(json.dumps({"api_key": key}))
+
+
+def _keyless_stream(server: FakeStreamServer):
+    return aperiodic.stream(
+        dataset="ohlcv",
+        exchange="binance-futures",
+        interval="1m",
+        symbols=[SYMBOL],
+        stream_url=server.url,
+    )
+
+
+def test_stream_uses_the_saved_key_when_none_is_passed(server, monkeypatch, tmp_path):
+    _save_key(monkeypatch, tmp_path, API_KEY)
+    server.scripts = [lambda ws, names: ws.send(_row(OHLCV, 1))]
+
+    _take(_keyless_stream(server), 1)
+
+    [request] = server.requests
+    assert request.headers["X-API-KEY"] == API_KEY
+
+
+def test_a_rejected_saved_key_says_to_log_in_again(server, monkeypatch, tmp_path):
+    _save_key(monkeypatch, tmp_path, "revoked-key")
+
+    with pytest.raises(APIError) as info:
+        _take(_keyless_stream(server), 1)
+
+    assert info.value.status_code == 401
+    assert str(tmp_path / "credentials") in info.value.message
+    assert "was rejected (revoked?)" in info.value.message
+    assert "aperiodic.login()" in info.value.message
+
+
 @pytest.mark.parametrize(
     ("status", "message"),
     [

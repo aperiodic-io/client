@@ -34,9 +34,16 @@ python -m aperiodic login   # or `aperiodic login` with the Aperiodic CLI
 
 This works on a laptop, over SSH and in a remote notebook: the link opens on whatever device you have at hand. A free account works, and covers every metric for 2025 on BTC, ETH, SOL and 10 RWA perps. The machine gets a key of its own, saved in `~/.config/aperiodic/credentials` (the Aperiodic CLI uses the same file), which you can revoke at [aperiodic.io/home/api](https://aperiodic.io/home/api). `aperiodic.whoami()` shows which key is in use and what the plan covers; `aperiodic.logout()` revokes it.
 
-After that, calls find the key on their own, so `api_key=` can be left out. The order is: an `api_key="..."` you pass, then the `APERIODIC_API_KEY` environment variable, then the saved key. For scheduled jobs and CI, make a named key at [aperiodic.io/home/api](https://aperiodic.io/home/api) and set `APERIODIC_API_KEY`.
+Logging in again on a machine whose saved key still works changes nothing: it says which key is in use. `aperiodic.login(force=True)` (or `python -m aperiodic login --force`) makes a new key and revokes the one it replaces, so repeated logins never pile up keys on your account.
 
-The one exception is [preview data](#preview-no-subscription-required): with `preview=True` the `api_key` is optional — omit it and the shared public demo key is used automatically.
+After that, calls find the key on their own, so `api_key=` can be left out, `stream()` and `get_symbols()` included. The order is the same in this client and the Aperiodic CLI:
+
+1. an `api_key="..."` you pass;
+2. the `APERIODIC_API_KEY` environment variable;
+3. for [preview data](#preview-no-subscription-required) (`preview=True`), the shared public demo key;
+4. the saved key.
+
+A saved key never takes over a preview request, so a revoked one cannot break the free sample. If the saved key is rejected, the error names its file and says to run `aperiodic.login()` again. For scheduled jobs and CI, make a named key at [aperiodic.io/home/api](https://aperiodic.io/home/api) and set `APERIODIC_API_KEY`.
 
 ## Symbology
 

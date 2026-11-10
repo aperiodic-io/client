@@ -1,6 +1,14 @@
 __version__ = "4.3.1"
 
-from .auth import LoginResult, credentials_path, default_api_key, login, logout, whoami
+from .auth import (
+    LoginResult,
+    LogoutResult,
+    credentials_path,
+    default_api_key,
+    login,
+    logout,
+    whoami,
+)
 from .client import AperiodicDataError, APIError, DownloadError
 from .endpoints.derivative import get_derivative_metrics, get_derivative_metrics_async
 from .endpoints.market_data import (
@@ -55,6 +63,7 @@ __all__ = [
     "L1Metric",
     "L2Metric",
     "LoginResult",
+    "LogoutResult",
     "OutputFormat",
     "RawDataset",
     "Stream",

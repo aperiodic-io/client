@@ -28,7 +28,7 @@ from itertools import chain, count
 from typing import TYPE_CHECKING, Any
 
 from .. import __version__
-from ..auth import default_api_key
+from ..auth import default_api_key, explain_rejected_key
 from ..client import AperiodicDataError, APIError
 from ..config import DEFAULT_STREAM_URL, RETRY_BACKOFF_BASE, get_headers
 from ..types import Exchange, Interval, StreamChannel
@@ -327,7 +327,9 @@ class Stream:
                 open_timeout=OPEN_TIMEOUT,
             )
         except InvalidStatus as exc:
-            raise _handshake_error(exc.response) from None
+            raise explain_rejected_key(
+                _handshake_error(exc.response), self._api_key
+            ) from None
         except InvalidHandshake as exc:
             raise ConnectionError(f"WebSocket handshake failed: {exc}") from exc
 
@@ -490,7 +492,7 @@ def _requested_channels(
 
 
 def stream(
-    api_key: str,
+    api_key: str | None = None,
     dataset: str | None = None,
     exchange: Exchange | None = None,
     interval: Interval | None = None,
@@ -522,6 +524,8 @@ def stream(
 
     Args:
         api_key: Your Aperiodic API key, sent in the ``X-API-KEY`` header.
+            Defaults to ``APERIODIC_API_KEY``, else the key ``aperiodic.login()``
+            saved.
         dataset: Dataset of the channel, e.g. ``"ohlcv"`` or ``"open_interest"``.
         exchange: Exchange of the channel, e.g. ``"binance-futures"``.
         interval: Interval of the channel, e.g. ``"1m"``.

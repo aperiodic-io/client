@@ -116,7 +116,12 @@ async def fetch_json(
             backoff_base=backoff_base,
         )
 
-    await _handle_api_error(response)
+    try:
+        await _handle_api_error(response)
+    except APIError as error:
+        from ..auth import explain_rejected_key
+
+        raise explain_rejected_key(error, headers.get("X-API-KEY")) from None
     return response.json()
 
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import sys
 
-from .auth import credentials_path, login, logout, whoami
+from .auth import _login, logout, whoami
 from .client import AperiodicDataError
 
 
@@ -21,6 +21,11 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Print the link instead of opening a browser",
     )
+    login_cmd.add_argument(
+        "--force",
+        action="store_true",
+        help="Replace a saved key that still works (the old one is revoked)",
+    )
     commands.add_parser("logout", help="Revoke this machine's key and remove it")
     commands.add_parser(
         "whoami", help="Show which key is in use and what the plan covers"
@@ -29,11 +34,14 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         if args.command == "login":
-            login(args.name, open_browser=False if args.no_browser else None)
-        elif args.command == "logout":
-            print(
-                "Signed out." if logout() else f"Not signed in ({credentials_path()})."
+            _login(
+                args.name,
+                open_browser=False if args.no_browser else None,
+                force=args.force,
+                force_hint="Run python -m aperiodic login --force to replace it.",
             )
+        elif args.command == "logout":
+            print(logout().message)
         else:
             me = whoami()
             covers = me.get("covers", {})
