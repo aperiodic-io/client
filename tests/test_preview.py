@@ -113,6 +113,10 @@ class TestResolveApiKey:
         assert _resolve_api_key(api_key, preview=True) == DEMO_API_KEY
 
     @pytest.mark.parametrize("api_key", [None, ""])
-    def test_missing_key_without_preview_raises(self, api_key):
-        with pytest.raises(AperiodicDataError):
+    def test_missing_key_without_preview_raises(self, api_key, monkeypatch, tmp_path):
+        # APERIODIC_API_KEY and a saved login are key sources too, and CI sets
+        # the former, so "no key" has to rule both out.
+        monkeypatch.delenv("APERIODIC_API_KEY", raising=False)
+        monkeypatch.setenv("APERIODIC_CONFIG_DIR", str(tmp_path))
+        with pytest.raises(AperiodicDataError, match=r"aperiodic\.login\(\)"):
             _resolve_api_key(api_key, preview=False)

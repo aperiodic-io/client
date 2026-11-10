@@ -153,18 +153,28 @@ async def fetch_json(
             continue
 
         if resp.status not in RETRYABLE_STATUS_CODES:
-            return await _parse_json_response(resp)
+            return await _parsed(resp, headers)
 
         await asyncio.sleep(retry_delay(attempt, backoff_base, _retry_after(resp)))
 
     resp = await _pyfetch_get(full_url, headers)
-    return await _parse_json_response(resp)
+    return await _parsed(resp, headers)
 
 
 async def _pyfetch_get(url: str, headers: dict[str, str]) -> Any:
     from pyodide.http import pyfetch  # type: ignore[import-not-found]
 
     return await pyfetch(url, headers=_to_js_headers(headers))
+
+
+async def _parsed(resp: Any, headers: dict[str, str]) -> Any:
+    """The JSON of ``resp``; a 401 for the key saved on this machine says how to sign in again."""
+    try:
+        return await _parse_json_response(resp)
+    except APIError as error:
+        from ..auth import explain_rejected_key
+
+        raise explain_rejected_key(error, headers.get("X-API-KEY")) from None
 
 
 async def _parse_json_response(resp: Any) -> Any:

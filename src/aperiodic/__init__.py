@@ -1,5 +1,14 @@
 __version__ = "4.3.1"
 
+from .auth import (
+    LoginResult,
+    LogoutResult,
+    credentials_path,
+    default_api_key,
+    login,
+    logout,
+    whoami,
+)
 from .client import AperiodicDataError, APIError, DownloadError
 from .endpoints.derivative import get_derivative_metrics, get_derivative_metrics_async
 from .endpoints.market_data import (
@@ -53,6 +62,8 @@ __all__ = [
     "Interval",
     "L1Metric",
     "L2Metric",
+    "LoginResult",
+    "LogoutResult",
     "OutputFormat",
     "RawDataset",
     "Stream",
@@ -64,6 +75,8 @@ __all__ = [
     "StreamWarning",
     "TimestampType",
     "TradeMetric",
+    "credentials_path",
+    "default_api_key",
     "download_raw",
     "download_raw_async",
     "get_derivative_metrics",
@@ -82,5 +95,8 @@ __all__ = [
     "get_twap_async",
     "get_vwap",
     "get_vwap_async",
+    "login",
+    "logout",
     "stream",
+    "whoami",
 ]

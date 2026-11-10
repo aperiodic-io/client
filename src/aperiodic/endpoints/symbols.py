@@ -3,11 +3,12 @@ from __future__ import annotations
 from ..client import fetch_json, run_async
 from ..config import DEFAULT_BASE_URL, get_headers
 from ..types import Exchange, SymbolsResponse
+from .utils import _resolve_api_key
 
 
 async def get_symbols_async(
-    api_key: str,
-    exchange: Exchange,
+    api_key: str | None = None,
+    exchange: Exchange | None = None,
     base_url: str = DEFAULT_BASE_URL,
 ) -> list[str]:
     """
@@ -17,7 +18,8 @@ async def get_symbols_async(
     for the given exchange.
 
     Args:
-        api_key: Your Aperiodic API key
+        api_key: Your Aperiodic API key. Defaults to ``APERIODIC_API_KEY``,
+            else the key ``aperiodic.login()`` saved.
         exchange: Source exchange ('binance-futures', 'binance')
         bucket: Data bucket (default: 'ohlcv')
         base_url: API base URL (default: https://aperiodic.io/api/v1)
@@ -39,17 +41,19 @@ async def get_symbols_async(
         >>> print(f"Found {len(symbols)} symbols")
         >>> print(symbols[:10])  # First 10 symbols
     """
+    if exchange is None:
+        raise TypeError("get_symbols() needs exchange=, e.g. 'binance-futures'.")
     url = f"{base_url}/metadata/symbols"
     params = {"exchange": exchange}
-    headers = get_headers(api_key)
+    headers = get_headers(_resolve_api_key(api_key, preview=False))
 
     data: SymbolsResponse = await fetch_json(url, params=params, headers=headers)
     return data["symbols"]
 
 
 def get_symbols(
-    api_key: str,
-    exchange: Exchange,
+    api_key: str | None = None,
+    exchange: Exchange | None = None,
     base_url: str = DEFAULT_BASE_URL,
 ) -> list[str]:
     return run_async(
