@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
+import sys
 from unittest import mock
 
 import pytest
@@ -10,6 +12,8 @@ import pytest
 pd = pytest.importorskip("pandas")
 pa = pytest.importorskip("pyarrow")
 pq = pytest.importorskip("pyarrow.parquet")
+
+from aperiodic._backends import _pyfetch_transport as pyfetch_transport  # noqa: E402
 
 
 class FakeResponse:
@@ -265,3 +269,28 @@ class TestDownloadParquetBytes:
                     semaphore=asyncio.Semaphore(10),
                     max_retries=0,
                 )
+
+
+class TestPlainInstall:
+    """Regular Python with no httpx: the extras are named, never a missing pyodide."""
+
+    @pytest.fixture(autouse=True)
+    def _no_pyodide(self, monkeypatch):
+        for name in ("pyodide", "pyodide.ffi", "pyodide.http"):
+            monkeypatch.delitem(sys.modules, name, raising=False)
+
+    def test_pyodide_detection_is_false_rather_than_an_error(self):
+        assert pyfetch_transport._has_pyodide_ffi() is False
+
+    def test_a_sync_call_names_the_extras_to_install(self):
+        async def fetch():
+            return 1
+
+        coro = fetch()
+        with pytest.raises(ImportError, match=r"aperiodic\[polars\]"):
+            pyfetch_transport.run_async(coro)
+        assert coro.cr_frame is None  # closed, so no "never awaited" warning
+
+    def test_an_async_call_names_the_extras_to_install(self):
+        with pytest.raises(ImportError, match=r"aperiodic\[pandas\]"):
+            asyncio.run(pyfetch_transport.fetch_json("https://x.test", {}, {}))

@@ -6,9 +6,13 @@ Access pre-computed derivative and microstructure metrics with parallel download
 
 ## Installation
 
+Install it with the data frame library you use. The extra also brings the HTTP client that fetching data needs:
+
 ```bash
-pip install aperiodic
+pip install "aperiodic[polars]"   # or "aperiodic[pandas]"
 ```
+
+A plain `pip install aperiodic` is enough to sign in with `aperiodic.login()`, but not to fetch data.
 
 Install from source:
 

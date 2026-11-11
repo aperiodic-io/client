@@ -22,6 +22,25 @@ if TYPE_CHECKING:
 
 T = TypeVar("T")
 
+NO_HTTP_CLIENT = (
+    "Fetching data needs an HTTP client, which a plain `pip install aperiodic` "
+    "leaves out. Install one with the data frame library you use: "
+    'pip install "aperiodic[polars]" or pip install "aperiodic[pandas]".'
+)
+
+
+def _in_browser_runtime() -> bool:
+    """Pyodide, or a test that fakes it by putting its modules in ``sys.modules``."""
+    return sys.platform == "emscripten" or any(
+        name in sys.modules for name in ("pyodide", "pyodide.ffi", "pyodide.http")
+    )
+
+
+def _require_browser_runtime() -> None:
+    """Outside Pyodide this transport is only chosen because httpx is missing."""
+    if not _in_browser_runtime():
+        raise ImportError(NO_HTTP_CLIENT)
+
 
 def _has_pyodide_ffi() -> bool:
     """Detect ``pyodide.ffi`` without importing it or crashing on test mocks.
@@ -38,7 +57,11 @@ def _has_pyodide_ffi() -> bool:
     """
     if "pyodide.ffi" in sys.modules:
         return True
-    return find_spec("pyodide.ffi") is not None
+    try:
+        return find_spec("pyodide.ffi") is not None
+    except (ModuleNotFoundError, ValueError):
+        # find_spec imports the parent package, which is not there outside Pyodide.
+        return False
 
 
 def run_async(coro: Coroutine[None, None, T]) -> T:
@@ -61,7 +84,11 @@ def run_async(coro: Coroutine[None, None, T]) -> T:
     runtime), raise a clear error pointing users to the ``_async``
     counterparts rather than silently returning a ``Task``.
     """
+    if not _in_browser_runtime():
+        coro.close()
+        raise ImportError(NO_HTTP_CLIENT)
     if not _has_pyodide_ffi():
+        coro.close()
         raise RuntimeError(
             "Synchronous Aperiodic client calls require Pyodide ≥ 0.26 with "
             "JavaScript Promise Integration (stack switching). Use the "
@@ -143,6 +170,7 @@ async def fetch_json(
     retried with exponential backoff. Every other response is handed to the
     caller as data or an ``APIError`` on the first attempt.
     """
+    _require_browser_runtime()
     full_url = _build_url(url, params)
 
     for attempt in range(max_retries):
@@ -221,6 +249,7 @@ async def download_parquet_bytes(
     Returns:
         Tuple of (year, month, raw_bytes)
     """
+    _require_browser_runtime()
     from pyodide.http import pyfetch  # type: ignore[import-not-found]
 
     async with semaphore:
