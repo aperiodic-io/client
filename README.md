@@ -1,6 +1,6 @@
 # Aperiodic Python Client
 
-Python client library for [Aperiodic.io](https://aperiodic.io) — institutional-grade market microstructure, liquidity and order flow metrics with full exchange universe coverage. Turn flow dynamics into alpha in hours, not months. No tick infrastructure to build or maintain.
+Python client for [Aperiodic](https://aperiodic.io): 220 point-in-time order flow, liquidity and market microstructure metrics in 19 datasets (flow, slippage, L1 and L2 order book imbalance and liquidity, funding, open interest, basis and more) for crypto and RWA perpetuals on Binance futures, OKX perps and Hyperliquid perps, from 1m to 1d, returned as Polars or pandas DataFrames. No tick infrastructure to build or maintain.
 
 Access pre-computed derivative and microstructure metrics with parallel downloads for optimal performance.
 
@@ -17,8 +17,8 @@ A plain `pip install aperiodic` is enough to sign in with `aperiodic.login()`, b
 Install from source:
 
 ```bash
-git clone https://github.com/aperiodic-io/aperiodic-client.git
-cd aperiodic-client
+git clone https://github.com/aperiodic-io/client.git
+cd client
 pip install -e .
 ```
 

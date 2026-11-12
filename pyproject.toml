@@ -22,8 +22,13 @@ classifiers = [
 dependencies = [
   "tqdm>=4.66.0",
 ]
-description = "Client library for Aperiodic aggregate market data API - OHLCV and more"
-keywords = ["quant", "api", "ohlcv", "market-data", "crypto", "parquet", "polars", "pandas", "websocket", "streaming"]
+description = "Python client for Aperiodic: point-in-time order flow, liquidity and market microstructure metrics for crypto and RWA perpetuals on Binance, OKX and Hyperliquid, as Polars or pandas DataFrames"
+keywords = [
+  "market-data", "crypto", "order-flow", "market-microstructure", "liquidity",
+  "order-book", "slippage", "flow-toxicity", "funding-rate", "open-interest",
+  "perpetual-futures", "binance", "okx", "hyperliquid", "rwa", "backtesting",
+  "quant", "parquet", "polars", "pandas", "ohlcv", "websocket", "streaming", "api",
+]
 license = "MIT"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -32,9 +37,12 @@ requires-python = ">=3.11"
 path = "src/aperiodic/__init__.py"
 
 [project.urls]
-Issues = "https://github.com/aperiodic-io/client/issues"
+Homepage = "https://aperiodic.io"
+Documentation = "https://aperiodic.io/api-docs"
+Catalog = "https://aperiodic.io/catalog"
+Pricing = "https://aperiodic.io/pricing"
 Source = "https://github.com/aperiodic-io/client"
-PyPI = "https://pypi.org/project/aperiodic-io/client"
+Issues = "https://github.com/aperiodic-io/client/issues"
 
 [project.optional-dependencies]
 polars = [
