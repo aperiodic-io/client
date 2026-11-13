@@ -55,8 +55,10 @@ IDLE_TIMEOUT = 75.0
 
 MAX_RECONNECT_DELAY = 30.0
 
-# One replay frame carries a whole bar, over a megabyte on an all-symbols
-# channel; the websockets default of 1 MiB would close the socket on it.
+# The server splits a replayed bar into small frames, but one row can be
+# larger, and earlier servers sent a whole bar (over a megabyte on an
+# all-symbols channel) in one frame: the websockets default of 1 MiB would
+# close the socket on it, reconnect and ask for the same replay forever.
 MAX_MESSAGE_BYTES = 16 * 2**20
 
 # The intervals the server keeps bars for, with their length in milliseconds.
@@ -74,7 +76,8 @@ REPLAY_STEPS_MS = {
 # A subscribe refused while the server is busy replaying (after it restarts)
 # is sent again after this pause, plus as much again at random, this often;
 # then without the replay. A replay cut short at the server's size cap is
-# followed up from the next bar at most this often.
+# followed up from the next bar at most this often per catch-up, and an
+# unavailable one is asked for once more after the same pause.
 BUSY_PAUSE = 1.0
 BUSY_RETRIES = 5
 MAX_CONTINUATIONS = 50
@@ -131,7 +134,8 @@ class StreamReplay:
     ``missing`` lists bars the server does not hold, to fetch from the REST
     endpoints. ``truncated`` means the server stopped at its size cap and the
     stream asks for the rest. ``unavailable`` means the history could not be
-    read at all: fill the gap from the REST endpoints.
+    read, or the server was too busy to read it in time; the stream asks once
+    more, then warns: fill the gap from the REST endpoints.
     """
 
     channel: str
@@ -348,7 +352,25 @@ class Stream:
         # session subscribed: where a reconnect's replay starts.
         self._last_bar: dict[str, int] = {}
         self._subscribed_at: int | None = None
-        self._follow_ups: list[str | StreamChannel] = []
+        # Each channel whose replay is not finished, and the bar to ask from
+        # if it must be asked for again: after a drop, the size cap or a
+        # refusal. A drop resumes from here, not from the newest live row,
+        # which comes before the replay has caught up.
+        self._replay_from: dict[str, int] = {}
+        # Channels whose `replayed` has not come yet. Follow-ups wait for all
+        # of them, so one replay runs at a time and none is refused for
+        # exceeding the server's replays per connection.
+        self._awaiting: set[str] = set()
+        self._awaiting_until = 0.0
+        self._follow_ups: dict[str, int] = {}
+        self._follow_ups_due = 0.0
+        self._follow_up_ids: dict[str, list[str]] = {}
+        self._follow_up_refusals = 0
+        self._continuations: dict[str, int] = {}
+        # The bar a replay returned nothing from, cut off by the size cap that
+        # a subscribe's channels share; asked for again alone and first.
+        self._stalled: dict[str, int] = {}
+        self._retried: set[str] = set()
         self._ws: ClientConnection | None = None
         self._closed = threading.Event()
         self._request_ids = count(1)
@@ -466,7 +488,9 @@ class Stream:
                     else (channel.get("since") if isinstance(channel, dict) else None)
                 )
             elif step is not None and self._replay:
-                if name in self._last_bar:
+                if name in self._replay_from:
+                    since = self._replay_from[name]
+                elif name in self._last_bar:
                     since = self._last_bar[name]
                 elif self._subscribed_at is not None:
                     since = self._subscribed_at - step
@@ -481,6 +505,8 @@ class Stream:
         pending: list[StreamMessage] = []
         # A session has subscribed before: this one resumes after a drop.
         channels = self._subscribe_channels(resume=self._subscribed_at is not None)
+        self._reset_replays()
+        self._expect_replays(channels)
         busy = 0
         deadline = time.monotonic() + OPEN_TIMEOUT
         try:
@@ -511,6 +537,8 @@ class Stream:
                             busy += 1
                             if busy > BUSY_RETRIES:
                                 channels = [_with_since(c, None) for c in channels]
+                                self._replay_from.clear()
+                                self._reset_replays()
                                 warnings.warn(
                                     "The stream stayed too busy to replay; subscribing "
                                     "without it. Fill the gap from the REST endpoints.",
@@ -560,6 +588,7 @@ class Stream:
         from websockets.exceptions import ConnectionClosed
 
         while True:
+            self._send_follow_ups(ws)
             try:
                 raw = ws.recv(timeout=IDLE_TIMEOUT)
             except TimeoutError:
@@ -572,17 +601,88 @@ class Stream:
             frame = _parse(raw)
             if frame is not None:
                 yield from self._handle(frame)
-            while self._follow_ups:
-                channel = self._follow_ups.pop(0)
-                ws.send(
-                    json.dumps(
-                        {
-                            "op": "subscribe",
-                            "id": f"r{next(self._request_ids)}",
-                            "channels": [channel],
-                        }
-                    )
+
+    def _reset_replays(self) -> None:
+        """Forget the follow-ups of a session; ``_replay_from`` is kept to resume from."""
+        self._awaiting.clear()
+        self._follow_ups.clear()
+        self._follow_up_ids.clear()
+        self._follow_up_refusals = 0
+        self._continuations.clear()
+        self._stalled.clear()
+        self._retried.clear()
+
+    def _expect_replays(self, channels: list[str | StreamChannel]) -> None:
+        for channel in channels:
+            if isinstance(channel, dict) and "since" in channel:
+                name = _channel_name(channel)
+                self._replay_from[name] = channel["since"]
+                self._awaiting.add(name)
+        # A `replayed` can fail to come (the server drops the channel): never
+        # hold the follow-ups longer than this.
+        self._awaiting_until = time.monotonic() + IDLE_TIMEOUT
+
+    def _send_follow_ups(self, ws: ClientConnection) -> None:
+        """Ask for the rest of the replays in one subscribe, once none is running.
+
+        A channel that came back empty goes first and alone among the stalled,
+        so it has the whole size cap to itself.
+        """
+        now = time.monotonic()
+        if (
+            not self._follow_ups
+            or now < self._follow_ups_due
+            or (self._awaiting and now < self._awaiting_until)
+        ):
+            return
+        stalled = [name for name in self._follow_ups if name in self._stalled]
+        names = stalled[:1] + [n for n in self._follow_ups if n not in self._stalled]
+        channels: list[str | StreamChannel] = []
+        for name in names:
+            source = next((c for c in self._channels if _channel_name(c) == name), None)
+            since = self._follow_ups.pop(name)
+            if source is not None:
+                channels.append(_with_since(source, since))
+        if not channels:
+            return
+        request_id = f"r{next(self._request_ids)}"
+        self._follow_up_ids[request_id] = [_channel_name(c) for c in channels]
+        self._expect_replays(channels)
+        ws.send(json.dumps({"op": "subscribe", "id": request_id, "channels": channels}))
+
+    def _queue_follow_up(self, channel: str, since: int, *, pause: bool) -> None:
+        self._replay_from[channel] = since
+        self._follow_ups[channel] = since
+        if pause:
+            self._follow_ups_due = max(
+                self._follow_ups_due,
+                time.monotonic() + BUSY_PAUSE + random.uniform(0, BUSY_PAUSE),
+            )
+
+    def _finish_replay(self, channel: str) -> None:
+        self._replay_from.pop(channel, None)
+        self._continuations.pop(channel, None)
+        self._stalled.pop(channel, None)
+        self._retried.discard(channel)
+
+    def _follow_up_refused(self, channels: list[str]) -> None:
+        """A follow-up refused while the server is busy: try again after a pause."""
+        self._follow_up_refusals += 1
+        for name in channels:
+            self._awaiting.discard(name)
+            since = self._replay_from.get(name)
+            if since is None:
+                continue
+            if self._follow_up_refusals > BUSY_RETRIES:
+                self._finish_replay(name)
+                warnings.warn(
+                    f"The stream stayed too busy to finish replaying {name}; fill it "
+                    f"from {_from_ms(since):%Y-%m-%d %H:%M} UTC from the REST endpoints.",
+                    StreamWarning,
+                    stacklevel=2,
                 )
+            else:
+                self._queue_follow_up(name, since, pause=True)
 
     def _handle(self, frame: dict[str, Any]) -> list[StreamMessage]:
         """Data and replay frames become messages; control frames are acted on."""
@@ -603,6 +703,10 @@ class Stream:
             ]
             for message in messages:
                 self._note_bar(message)
+            bar = frame.get("time")
+            name = frame["channel"]
+            if isinstance(bar, int) and name in self._replay_from:
+                self._replay_from[name] = max(self._replay_from[name], bar)
             return messages
         if op is None and "channel" in frame:
             if not isinstance(frame.get("data"), dict):
@@ -621,6 +725,11 @@ class Stream:
             return [message]
         if op == "replayed":
             self._replayed(frame)
+        elif op == "error" and (
+            frame.get("code") == "limit_exceeded"
+            and str(frame.get("id")) in self._follow_up_ids
+        ):
+            self._follow_up_refused(self._follow_up_ids.pop(str(frame.get("id"))))
         elif op == "error":
             warnings.warn(
                 f"Stream error ({frame.get('code')}): {frame.get('message')}",
@@ -654,7 +763,10 @@ class Stream:
             unavailable=bool(frame.get("unavailable")),
         )
         self.replays.append(replay)
+        self._awaiting.discard(channel)
         if replay.unavailable:
+            if self._retry_unavailable(channel):
+                return
             warnings.warn(
                 f"The replay of {channel} is unavailable; fill the gap from the REST endpoints.",
                 StreamWarning,
@@ -668,29 +780,72 @@ class Stream:
                 StreamWarning,
                 stacklevel=2,
             )
-        # Cut short at the server's size cap: ask for the rest from the next bar.
+        if replay.truncated:
+            self._continue_replay(channel, frame)
+        else:
+            self._finish_replay(channel)
+
+    def _retry_unavailable(self, channel: str) -> bool:
+        """Ask once more for a replay the server could not read in time."""
+        since = self._replay_from.get(channel)
+        if since is None or channel in self._retried:
+            self._finish_replay(channel)
+            return False
+        self._retried.add(channel)
+        self._queue_follow_up(channel, since, pause=True)
+        return True
+
+    def _continue_replay(self, channel: str, frame: dict[str, Any]) -> None:
+        """Ask for the rest of a replay cut short at the server's size cap.
+
+        The cap is shared by a subscribe's channels, so a later one can come
+        back with no bars at all (``to`` null): it is asked for again from
+        ``from``. Empty a second time from the same bar, alone, that bar is
+        larger than the cap itself.
+        """
         step = REPLAY_STEPS_MS.get(channel.rsplit(".", 1)[-1])
-        to = frame.get("to")
-        follow_ups = sum(
-            1 for r in self.replays if r.channel == channel and r.truncated
-        )
-        if (
-            replay.truncated
-            and step
-            and isinstance(to, int)
-            and follow_ups <= MAX_CONTINUATIONS
-        ):
-            source = next(
-                (c for c in self._channels if _channel_name(c) == channel), None
+        if step is None or channel not in self._replay_from:
+            return
+        to, start = frame.get("to"), frame.get("from")
+        if isinstance(to, int):
+            since = to + step
+        elif isinstance(start, int) and self._stalled.get(channel) != start:
+            self._stalled[channel] = start
+            since = start
+        else:
+            self._finish_replay(channel)
+            warnings.warn(
+                f"A bar of {channel} is larger than the server's replay cap; "
+                "fetch it and what follows from the REST endpoints.",
+                StreamWarning,
+                stacklevel=2,
             )
-            if source is not None:
-                self._follow_ups.append(_with_since(source, to + step))
+            return
+        continuations = self._continuations.get(channel, 0) + 1
+        if continuations > MAX_CONTINUATIONS:
+            self._finish_replay(channel)
+            warnings.warn(
+                f"The replay of {channel} is still cut short after "
+                f"{MAX_CONTINUATIONS} follow-ups; fill it from "
+                f"{_from_ms(since):%Y-%m-%d %H:%M} UTC from the REST endpoints.",
+                StreamWarning,
+                stacklevel=2,
+            )
+            return
+        self._continuations[channel] = continuations
+        if isinstance(to, int):
+            self._stalled.pop(channel, None)
+        self._queue_follow_up(channel, since, pause=False)
 
     def _unsubscribed(self, frame: dict[str, Any]) -> None:
         rejected = _rejections(frame.get("rejected") or [])
         # A channel listed only under "rejected" is gone too; keeping it would
         # leave the loop waiting for rows that never come.
         removed = set(frame.get("channels") or []) | {r.channel for r in rejected}
+        for name in removed:
+            self._awaiting.discard(name)
+            self._follow_ups.pop(name, None)
+            self._finish_replay(name)
         previous = self.subscription or StreamSubscription(channels=())
         self.subscription = StreamSubscription(
             channels=tuple(c for c in previous.channels if c not in removed),
