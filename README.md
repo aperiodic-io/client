@@ -49,6 +49,12 @@ After that, calls find the key on their own, so `api_key=` can be left out, `str
 
 A saved key never takes over a preview request, so a revoked one cannot break the free sample. If the saved key is rejected, the error names its file and says to run `aperiodic.login()` again. For scheduled jobs and CI, make a named key at [aperiodic.io/home/api](https://aperiodic.io/home/api) and set `APERIODIC_API_KEY`.
 
+## Use it from an AI agent (MCP)
+
+Aperiodic also runs a remote MCP server at `https://aperiodic.io/mcp`, for Claude, ChatGPT, Cursor and other agents. Setup: https://aperiodic.io/mcp
+
+[![mcptry](https://mcptry.com/badge/io.aperiodic/market-data)](https://mcptry.com/servers/io.aperiodic/market-data)
+
 ## Symbology
 
 Symbols are expected in **[Atlas unified symbology](https://github.com/aperiodic-io/atlas)** — a standardised, exchange-agnostic naming scheme.
