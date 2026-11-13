@@ -364,8 +364,10 @@ flagged `snapshot=True`; pass `snapshot=False` to skip those.
   overwrite it. The stream's `.replays` lists a `StreamReplay` per replay
   (bars, rows, `missing` bars the server does not hold, `truncated`,
   `unavailable`); a replay cut short at the server's size cap is followed up
-  from the next bar, and a subscribe refused while the server is busy
-  replaying is sent again after a short random pause.
+  from the next bar, an unavailable one is asked for once more, and a
+  subscribe refused while the server is busy replaying is sent again after a
+  short random pause. A drop while a replay is still catching up resumes it
+  from where it got to.
 - **Gaps:** each reconnect emits a `StreamWarning` and is recorded in the
   stream's `.gaps`, a list of `(disconnected_at, reconnected_at)` UTC
   datetimes. Below 1m, or past what the server keeps, rows published while

@@ -961,8 +961,12 @@ def test_truncated_replay_is_followed_up_from_the_next_bar(server):
     assert follow_up["channels"][0]["symbols"] == [SYMBOL]
 
 
-def test_an_unavailable_replay_warns(server):
+def test_an_unavailable_replay_is_asked_once_more_then_warns(server, no_busy_pause):
+    follow_ups: list[dict] = []
+
     def script(ws, names):
+        ws.send(json.dumps({"op": "replayed", "channel": OHLCV, "unavailable": True}))
+        follow_ups.append(json.loads(ws.recv()))
         ws.send(json.dumps({"op": "replayed", "channel": OHLCV, "unavailable": True}))
         ws.send(_row(OHLCV, 1))
 
@@ -972,4 +976,110 @@ def test_an_unavailable_replay_warns(server):
     with pytest.warns(StreamWarning, match="unavailable"):
         _take(stream, 1)
 
-    assert stream.replays[0].unavailable
+    [follow_up] = follow_ups
+    assert (
+        follow_up["channels"][0]["since"]
+        == server.subscribes[0]["channels"][0]["since"]
+    )
+    assert [r.unavailable for r in stream.replays] == [True, True]
+
+
+# The size cap is shared by a subscribe's channels: one can use it all and
+# leave the next with no bars and no `to`. That one must be asked for again.
+def test_a_channel_left_empty_by_the_shared_cap_is_asked_for_again_first(server):
+    follow_ups: list[dict] = []
+    since = BAR_MS - 600_000
+
+    def script(ws, names):
+        ws.send(_replay(OHLCV, BAR_MS, {"symbol": SYMBOL, "time": BAR_MS * 1000}))
+        ws.send(_replayed(OHLCV, BAR_MS, BAR_MS, truncated=True))
+        ws.send(_replayed(OPEN_INTEREST, since, None, bars=0, rows=0, truncated=True))
+        follow_ups.append(json.loads(ws.recv()))
+        ws.send(_replayed(OPEN_INTEREST, since, since))
+        ws.send(_replayed(OHLCV, BAR_MS + 60_000, BAR_MS + 60_000))
+        ws.send(_row(OHLCV, 2))
+
+    server.scripts = [script]
+    stream = aperiodic.stream(
+        API_KEY,
+        channels=[OHLCV, OPEN_INTEREST],
+        since=datetime.fromtimestamp(since / 1000, UTC),
+        stream_url=server.url,
+    )
+
+    _take(stream, 2)
+
+    # One follow-up for both, the empty channel first so it has the cap to itself.
+    [follow_up] = follow_ups
+    assert [(_name(c), c["since"]) for c in follow_up["channels"]] == [
+        (OPEN_INTEREST, since),
+        (OHLCV, BAR_MS + 60_000),
+    ]
+
+
+def test_a_bar_larger_than_the_cap_stops_the_follow_ups_with_a_warning(server):
+    follow_ups: list[dict] = []
+
+    def script(ws, names):
+        ws.send(_replayed(OHLCV, BAR_MS, None, bars=0, rows=0, truncated=True))
+        follow_ups.append(json.loads(ws.recv()))
+        ws.send(_replayed(OHLCV, BAR_MS, None, bars=0, rows=0, truncated=True))
+        ws.send(_row(OHLCV, 1))
+        ws.send(_row(OHLCV, 2))
+
+    server.scripts = [script]
+
+    with pytest.warns(StreamWarning, match="larger than the server's replay cap"):
+        _take(_stream(server, since=timedelta(minutes=5)), 2)
+
+    [follow_up] = follow_ups
+    assert follow_up["channels"][0]["since"] == BAR_MS
+
+
+# Held live rows come before `replayed`, so the newest bar received runs ahead
+# of a replay that is still catching up; a drop then must not skip the rest.
+def test_a_drop_during_a_catch_up_resumes_where_the_replay_got_to(server):
+    def first(ws, names):
+        ws.send(_replay(OHLCV, BAR_MS, {"symbol": SYMBOL, "time": BAR_MS * 1000}))
+        ws.send(_row(OHLCV, (BAR_MS + 600_000) * 1000))
+        ws.send(_replayed(OHLCV, BAR_MS, BAR_MS, truncated=True))
+        ws.recv()
+        ws.socket.shutdown(socket.SHUT_RDWR)
+
+    server.scripts = [first, lambda ws, names: ws.send(_row(OHLCV, 3))]
+
+    with pytest.warns(StreamWarning, match="replayed"):
+        _take(_stream(server, since=timedelta(hours=1)), 3)
+
+    assert server.subscribes[1]["channels"][0]["since"] == BAR_MS + 60_000
+
+
+def test_a_refused_follow_up_is_sent_again(server, no_busy_pause):
+    follow_ups: list[dict] = []
+
+    def script(ws, names):
+        ws.send(_replay(OHLCV, BAR_MS, {"symbol": SYMBOL, "time": BAR_MS * 1000}))
+        ws.send(_replayed(OHLCV, BAR_MS, BAR_MS, truncated=True))
+        follow_ups.append(json.loads(ws.recv()))
+        ws.send(
+            json.dumps(
+                {
+                    "op": "error",
+                    "id": follow_ups[0]["id"],
+                    "code": "limit_exceeded",
+                    "message": "At most 4 replays can be queued on a connection",
+                }
+            )
+        )
+        ws.send(_row(OHLCV, 2))
+        follow_ups.append(json.loads(ws.recv()))
+        ws.send(_row(OHLCV, 3))
+
+    server.scripts = [script]
+
+    _take(_stream(server, since=timedelta(hours=1)), 3)
+
+    first, second = follow_ups
+    assert first["id"] != second["id"]
+    assert first["channels"] == second["channels"]
+    assert second["channels"][0]["since"] == BAR_MS + 60_000
