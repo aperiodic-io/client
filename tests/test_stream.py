@@ -18,6 +18,7 @@ import threading
 import time
 import warnings
 from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
 from itertools import islice
 from pathlib import Path
 
@@ -73,6 +74,8 @@ class FakeStreamServer:
         self.subscribes: list[dict] = []
         self.client_close_codes: list[int | None] = []
         self.client_closed = threading.Event()
+        # Subscribes refused as busy before one is acknowledged.
+        self.busy = 0
 
     def process_request(self, connection, request):
         self.requests.append(request)
@@ -90,6 +93,20 @@ class FakeStreamServer:
         index = len(self.subscribes)
         frame = json.loads(ws.recv())
         self.subscribes.append(frame)
+        while self.busy > 0:
+            self.busy -= 1
+            ws.send(
+                json.dumps(
+                    {
+                        "op": "error",
+                        "id": frame["id"],
+                        "code": "limit_exceeded",
+                        "message": "Too many replays are running at once",
+                    }
+                )
+            )
+            frame = json.loads(ws.recv())
+            self.subscribes.append(frame)
         names = [_name(channel) for channel in frame["channels"]]
         ws.send(
             json.dumps(
@@ -471,7 +488,13 @@ def test_reconnects_and_resubscribes(server, script):
 
     assert [m.data["time"] for m in messages] == [1, 2]
     assert len(server.subscribes) == 2
-    assert server.subscribes[1]["channels"] == server.subscribes[0]["channels"]
+    first, again = server.subscribes[0]["channels"], server.subscribes[1]["channels"]
+    assert [_name(c) for c in again] == [_name(c) for c in first]
+    assert again[0]["symbols"] == [SYMBOL]
+    # The reconnect replays from the newest bar received, and from just before
+    # the last subscribe on a channel that delivered none.
+    assert again[0]["since"] == 1_000
+    assert isinstance(again[1]["since"], int)
 
 
 def test_rejected_resubscribe_after_reconnect_raises(server):
@@ -785,3 +808,206 @@ def test_unsubscribed_listing_a_channel_only_as_rejected_removes_it(server):
 
     assert [r.code for r in info.value.rejected] == ["not_entitled"]
     assert stream.subscription.channels == ()
+
+
+# ---------------------------------------------------------------------------
+# Replay
+# ---------------------------------------------------------------------------
+
+BAR_MS = 1_791_307_200_000
+
+
+def _replay(channel: str, time_ms: int, *rows: dict) -> str:
+    return json.dumps(
+        {"channel": channel, "replay": True, "time": time_ms, "data": list(rows)}
+    )
+
+
+def _replayed(
+    channel: str, start: int, end: int, *, bars: int = 1, rows: int = 1, **extra
+) -> str:
+    return json.dumps(
+        {
+            "op": "replayed",
+            "channel": channel,
+            "from": start,
+            "to": end,
+            "bars": bars,
+            "rows": rows,
+            "missing": extra.pop("missing", []),
+            "truncated": extra.pop("truncated", False),
+            **extra,
+        }
+    )
+
+
+@pytest.fixture
+def no_busy_pause(monkeypatch):
+    monkeypatch.setattr(stream_module, "BUSY_PAUSE", 0.0)
+
+
+def test_since_replays_the_history_before_the_live_rows(server):
+    # A replay frame holds a whole bar, over a megabyte on an all-symbols
+    # channel: the default 1 MiB frame limit would close the socket on it.
+    padding = "x" * (2 * 2**20)
+
+    def script(ws, names):
+        ws.send(
+            _replay(
+                OHLCV,
+                BAR_MS,
+                {"symbol": SYMBOL, "time": BAR_MS * 1000},
+                {
+                    "symbol": "perpetual-ETH-USDT:USDT",
+                    "time": BAR_MS * 1000,
+                    "pad": padding,
+                },
+            )
+        )
+        ws.send(_replayed(OHLCV, BAR_MS, BAR_MS, rows=2))
+        ws.send(_row(OHLCV, (BAR_MS + 60_000) * 1000))
+
+    server.scripts = [script]
+    since = datetime(2026, 10, 6, 9, 20, tzinfo=UTC)
+    stream = _stream(server, since=since)
+
+    messages = _take(stream, 3)
+
+    assert server.subscribes[0]["channels"][0]["since"] == int(since.timestamp() * 1000)
+    assert [m.replay for m in messages] == [True, True, False]
+    [replay] = stream.replays
+    assert (replay.channel, replay.bars, replay.rows, replay.truncated) == (
+        OHLCV,
+        1,
+        2,
+        False,
+    )
+    assert replay.start == datetime.fromtimestamp(BAR_MS / 1000, UTC)
+
+
+def test_since_can_be_a_duration_back_from_now(server):
+    server.scripts = [lambda ws, names: ws.send(_row(OHLCV, 1))]
+
+    _take(_stream(server, since=timedelta(minutes=30)), 1)
+
+    since = server.subscribes[0]["channels"][0]["since"]
+    assert abs(since - (time.time() - 1800) * 1000) < 60_000
+
+
+def test_reconnect_replays_from_the_newest_bar(server):
+    def first(ws, names):
+        ws.send(_row(OHLCV, BAR_MS * 1000))
+        ws.socket.shutdown(socket.SHUT_RDWR)
+
+    def second(ws, names):
+        ws.send(
+            _replay(
+                OHLCV,
+                BAR_MS + 60_000,
+                {"symbol": SYMBOL, "time": (BAR_MS + 60_000) * 1000},
+            )
+        )
+        ws.send(_replayed(OHLCV, BAR_MS + 60_000, BAR_MS + 60_000))
+
+    server.scripts = [first, second]
+
+    with pytest.warns(StreamWarning, match="replayed"):
+        messages = _take(_stream(server), 2)
+
+    assert "since" not in server.subscribes[0]["channels"][0]
+    assert server.subscribes[1]["channels"][0]["since"] == BAR_MS
+    assert [m.replay for m in messages] == [False, True]
+
+
+def test_no_replay_after_a_reconnect_when_turned_off(server):
+    server.scripts = [_drop_socket, lambda ws, names: ws.send(_row(OHLCV, 2))]
+
+    with pytest.warns(StreamWarning, match="not replayed"):
+        _take(_stream(server, replay=False), 2)
+
+    assert "since" not in server.subscribes[1]["channels"][0]
+
+
+def test_no_since_below_a_minute(server):
+    seconds = "ohlcv.binance-futures.15s"
+    server.scripts = [
+        lambda ws, names: (
+            ws.send(_row(seconds, 1)),
+            ws.socket.shutdown(socket.SHUT_RDWR),
+        ),
+        lambda ws, names: ws.send(_row(seconds, 2)),
+    ]
+
+    with pytest.warns(StreamWarning):
+        _take(aperiodic.stream(API_KEY, channels=[seconds], stream_url=server.url), 2)
+
+    assert server.subscribes[1]["channels"] == [seconds]
+
+
+def test_since_is_refused_without_a_minute_channel_or_a_timezone(server):
+    with pytest.raises(AperiodicDataError, match="1m or longer"):
+        aperiodic.stream(
+            API_KEY,
+            channels=["ohlcv.binance-futures.15s"],
+            since=timedelta(minutes=5),
+            stream_url=server.url,
+        )
+    with pytest.raises(AperiodicDataError, match="timezone"):
+        _stream(server, since=datetime(2026, 10, 6, 9, 20))  # noqa: DTZ001
+
+
+# After a deploy every client reconnects with since at once; the server
+# refuses past its cap and expects a retry after a pause.
+def test_busy_refusal_is_sent_again(server, no_busy_pause):
+    server.busy = 2
+    server.scripts = [lambda ws, names: ws.send(_row(OHLCV, 1))]
+
+    [message] = _take(_stream(server, since=timedelta(minutes=5)), 1)
+
+    assert message.data["time"] == 1
+    assert len(server.subscribes) == 3
+    assert all("since" in frame["channels"][0] for frame in server.subscribes)
+
+
+def test_busy_refusal_falls_back_to_no_replay(server, no_busy_pause):
+    server.busy = stream_module.BUSY_RETRIES + 1
+    server.scripts = [lambda ws, names: ws.send(_row(OHLCV, 1))]
+
+    with pytest.warns(StreamWarning, match="too busy to replay"):
+        _take(_stream(server, since=timedelta(minutes=5)), 1)
+
+    assert "since" not in server.subscribes[-1]["channels"][0]
+
+
+# The server caps one replay; the rest comes from asking again after it.
+def test_truncated_replay_is_followed_up_from_the_next_bar(server):
+    follow_ups: list[dict] = []
+
+    def script(ws, names):
+        ws.send(_replay(OHLCV, BAR_MS, {"symbol": SYMBOL, "time": BAR_MS * 1000}))
+        ws.send(_replayed(OHLCV, BAR_MS, BAR_MS, truncated=True))
+        follow_ups.append(json.loads(ws.recv()))
+        ws.send(_row(OHLCV, 2))
+
+    server.scripts = [script]
+
+    _take(_stream(server, since=timedelta(hours=1)), 2)
+
+    [follow_up] = follow_ups
+    assert follow_up["op"] == "subscribe"
+    assert follow_up["channels"][0]["since"] == BAR_MS + 60_000
+    assert follow_up["channels"][0]["symbols"] == [SYMBOL]
+
+
+def test_an_unavailable_replay_warns(server):
+    def script(ws, names):
+        ws.send(json.dumps({"op": "replayed", "channel": OHLCV, "unavailable": True}))
+        ws.send(_row(OHLCV, 1))
+
+    server.scripts = [script]
+    stream = _stream(server, since=timedelta(minutes=5))
+
+    with pytest.warns(StreamWarning, match="unavailable"):
+        _take(stream, 1)
+
+    assert stream.replays[0].unavailable

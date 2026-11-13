@@ -347,8 +347,24 @@ for message in stream(
     print(message.channel, message.snapshot, message.data["close"])
 ```
 
+Catch up on the last 30 minutes before the live rows:
+
+```python
+from datetime import timedelta
+
+for message in stream(
+    api_key="your-api-key",
+    dataset="ohlcv",
+    exchange="binance-futures",
+    interval="1m",
+    since=timedelta(minutes=30),
+):
+    print(message.replay, message.data["time"], message.data["close"])
+```
+
 Each `StreamMessage` has `channel` (`"ohlcv.binance-futures.1m"`), `data` (the
-row as published; `time` is microseconds since the epoch) and `snapshot`.
+row as published; `time` is microseconds since the epoch), `snapshot` and
+`replay`.
 Right after subscribing, Pro plans and above get the latest row per symbol,
 flagged `snapshot=True`; pass `snapshot=False` to skip those.
 
@@ -371,10 +387,23 @@ flagged `snapshot=True`; pass `snapshot=False` to skip those.
   subscription (`reconnect=False` raises `StreamClosedError` instead). Close
   codes 4000-4999 (4001: plan lapsed or key rotated) and 1008 (rate limit)
   always raise `StreamClosedError`.
-- **At-most-once:** rows published while disconnected are not replayed. Each
-  reconnect emits a `StreamWarning` and is recorded in the stream's `.gaps`,
-  a list of `(disconnected_at, reconnected_at)` UTC datetimes; if a gap
-  matters, fill it from the REST endpoints (`get_ohlcv`, ...).
+- **Replay:** on 1m and longer intervals the server keeps recent bars (1 h of
+  1m to 30m, 3 h of 1h, the newest 4h bar, 48 h of 1d). A reconnect asks for
+  each channel's bars since the newest one received, so rows published while
+  disconnected arrive first, flagged `replay=True`. Pass `since=` (a UTC
+  `datetime`, or a `timedelta` back from now) to replay from a time of your
+  choosing on the first connect too, and `replay=False` to turn the reconnect
+  replay off. A row can arrive both replayed and live with the same key:
+  overwrite it. The stream's `.replays` lists a `StreamReplay` per replay
+  (bars, rows, `missing` bars the server does not hold, `truncated`,
+  `unavailable`); a replay cut short at the server's size cap is followed up
+  from the next bar, and a subscribe refused while the server is busy
+  replaying is sent again after a short random pause.
+- **Gaps:** each reconnect emits a `StreamWarning` and is recorded in the
+  stream's `.gaps`, a list of `(disconnected_at, reconnected_at)` UTC
+  datetimes. Below 1m, or past what the server keeps, rows published while
+  disconnected are lost; if a gap matters, fill it from the REST endpoints
+  (`get_ohlcv`, ...).
 - Leaving the loop (`break`, Ctrl-C) closes the connection. To close it from
   elsewhere, keep the stream and call `.close()`, or use it as a context
   manager.

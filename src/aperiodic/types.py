@@ -84,10 +84,13 @@ class RawFilesResponse(TypedDict):
 class StreamChannel(TypedDict):
     """One live channel, the object form of ``"dataset.exchange.interval"``.
 
-    Omit ``symbols`` to receive every symbol the plan allows.
+    Omit ``symbols`` to receive every symbol the plan allows. ``since`` (epoch
+    milliseconds) replays the channel's bars from then on before its live
+    rows, on 1m and longer intervals.
     """
 
     dataset: str
     exchange: Exchange
     interval: Interval
     symbols: NotRequired[list[str]]
+    since: NotRequired[int]
