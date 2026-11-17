@@ -1,6 +1,6 @@
 [build-system]
 build-backend = "hatchling.build"
-requires = ["hatchling"]
+requires = ["hatchling>=1.27"]
 
 [project]
 name = "aperiodic"
@@ -16,7 +16,6 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: Implementation :: CPython",
-  "License :: Other/Proprietary License",
   "Operating System :: OS Independent",
 ]
 dependencies = [
@@ -30,6 +29,7 @@ keywords = [
   "quant", "parquet", "polars", "pandas", "ohlcv", "websocket", "streaming", "api",
 ]
 license = "MIT"
+license-files = ["LICENSE"]
 readme = "README.md"
 requires-python = ">=3.11"
 
