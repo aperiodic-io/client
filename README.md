@@ -36,7 +36,7 @@ aperiodic.login()  # prints a link and a code; open it on any device and allow i
 python -m aperiodic login   # or `aperiodic login` with the Aperiodic CLI
 ```
 
-This works on a laptop, over SSH and in a remote notebook: the link opens on whatever device you have at hand. A free account works, and covers every metric for 2025 on BTC, ETH, SOL and 10 RWA perps. The machine gets a key of its own, saved in `~/.config/aperiodic/credentials` (the Aperiodic CLI uses the same file), which you can revoke at [aperiodic.io/home/api](https://aperiodic.io/home/api). `aperiodic.whoami()` shows which key is in use and what the plan covers; `aperiodic.logout()` revokes it.
+This works on a laptop, over SSH and in a remote notebook: the link opens on whatever device you have at hand. A free account works, and covers every metric for Q3 2026 on BTC, ETH, SOL and 10 RWA perps, at 1h, 4h and 1d bars. The machine gets a key of its own, saved in `~/.config/aperiodic/credentials` (the Aperiodic CLI uses the same file), which you can revoke at [aperiodic.io/home/api](https://aperiodic.io/home/api). `aperiodic.whoami()` shows which key is in use and what the plan covers; `aperiodic.logout()` revokes it.
 
 Logging in again on a machine whose saved key still works changes nothing: it says which key is in use. `aperiodic.login(force=True)` (or `python -m aperiodic login --force`) makes a new key and revokes the one it replaces, so repeated logins never pile up keys on your account.
 

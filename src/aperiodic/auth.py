@@ -229,8 +229,9 @@ def login(
 
     Prints a link and a code: open the link on any device, check the code
     matches, and allow it. A free account works, and covers every metric for
-    2025 on BTC, ETH, SOL and 10 RWA perps. The key is named after this
-    machine (``name`` overrides it) and can be revoked at aperiodic.io/home/api.
+    Q3 2026 on BTC, ETH, SOL and 10 RWA perps, at 1h, 4h and 1d bars. The key
+    is named after this machine (``name`` overrides it) and can be revoked at
+    aperiodic.io/home/api.
 
     When this machine is already signed in with a key the server accepts, it
     says so and returns that login without making another key. ``force=True``
