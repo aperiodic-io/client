@@ -15,7 +15,7 @@ permissions:
   contents: write
 jobs:
   bump-version:
-    runs-on: ubuntu-latest
+    runs-on: celesto-memory
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4

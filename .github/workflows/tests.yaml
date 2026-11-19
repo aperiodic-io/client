@@ -18,9 +18,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os:
-          - ubuntu-latest
-          - macos-latest
+        # Celesto runs Linux only, so macOS stays on GitHub's runners and only
+        # push runs use it. A dispatch is unravel-router's release gate, which
+        # must not wait in GitHub's macOS queue.
+        os: ${{ fromJSON(github.event_name == 'workflow_dispatch' && '["celesto-memory"]' || '["celesto-memory", "macos-latest"]') }}
         python-version:
           # - "3.11"
           - "3.12"
@@ -70,7 +71,7 @@ jobs:
           APERIODIC_STREAM_URL: ${{ inputs.stream_url || '' }}
           # The live stream tests hold a socket for up to two minutes on a key
           # whose maxConnections the whole matrix shares, so only one job runs them.
-          APERIODIC_STREAM_LIVE_TESTS: ${{ (matrix.os == 'ubuntu-latest' && matrix.python-version == '3.13' && matrix.backend == 'polars') && '1' || '0' }}
+          APERIODIC_STREAM_LIVE_TESTS: ${{ (matrix.os == 'celesto-memory' && matrix.python-version == '3.13' && matrix.backend == 'polars') && '1' || '0' }}
           CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
           CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
         run: pytest . -s --cov --durations 0
@@ -86,7 +87,7 @@ jobs:
   # tests/pyodide_smoke/smoke.js for the checks.
   # ---------------------------------------------------------------------------
   pyodide-smoke:
-    runs-on: ubuntu-latest
+    runs-on: celesto-memory
     steps:
       - uses: actions/checkout@v3
 
