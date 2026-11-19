@@ -5,6 +5,7 @@ jobs:
     runs-on: celesto-memory
     steps:
       - uses: actions/checkout@v4
-      - uses: chartboost/ruff-action@v1
+      # chartboost/ruff-action runs ruff through pipx, which Celesto's image lacks.
+      - uses: astral-sh/ruff-action@v3
         with:
           version: 0.14.1
